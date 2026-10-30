@@ -187,3 +187,115 @@
     opacity: 1;
   }
 }
+
+/* Sciences · lagoon world (illustration motion; stilled by reduced motion above) */
+.lw-swim-right {
+  animation: lw-swim-right 40s linear infinite;
+}
+.lw-swim-left {
+  animation: lw-swim-left 40s linear infinite;
+}
+@keyframes lw-swim-right {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(1840px);
+  }
+}
+@keyframes lw-swim-left {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-1840px);
+  }
+}
+.lw-rays {
+  animation: lw-rays 14s ease-in-out infinite alternate;
+  transform-origin: 800px 905px;
+}
+@keyframes lw-rays {
+  from {
+    transform: skewX(-4deg);
+    opacity: 0.75;
+  }
+  to {
+    transform: skewX(5deg);
+    opacity: 1;
+  }
+}
+.lw-grass path {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: lw-sway 5s ease-in-out infinite alternate;
+}
+@keyframes lw-sway {
+  from {
+    transform: rotate(-5deg);
+  }
+  to {
+    transform: rotate(5deg);
+  }
+}
+.lw-flap {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: lw-flap 0.9s ease-in-out infinite alternate;
+}
+@keyframes lw-flap {
+  from {
+    transform: scaleY(1);
+  }
+  to {
+    transform: scaleY(-0.4);
+  }
+}
+
+/* Physics · vehicle halo */
+.jm-halo {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: jm-halo 1.8s ease-out infinite;
+}
+@keyframes jm-halo {
+  from {
+    transform: scale(0.6);
+    opacity: 0.45;
+  }
+  to {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+/* Home · landscape light */
+.gl-twinkle {
+  animation: gl-twinkle 6s ease-in-out infinite alternate;
+}
+@keyframes gl-twinkle {
+  to {
+    opacity: 0.05;
+  }
+}
+.gl-glitter {
+  animation: gl-glitter 3.2s ease-in-out infinite alternate;
+}
+@keyframes gl-glitter {
+  from {
+    opacity: 0.65;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(6px);
+  }
+}
+.gl-dust {
+  animation: gl-dust 40s linear infinite alternate;
+}
+@keyframes gl-dust {
+  to {
+    transform: translate(-60px, -40px);
+  }
+}

@@ -235,6 +235,31 @@ function stitchTile(light: string, dark: string) {
   return t;
 }
 
+/** Fine yarn fibres: short, slightly slanted strokes, tiled (adds softness at close range). */
+function fiberTile(alpha: number) {
+  const n = 192;
+  const t = document.createElement('canvas');
+  t.width = n;
+  t.height = n;
+  const g = t.getContext('2d')!;
+  let seed = 7;
+  const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  g.lineCap = 'round';
+  for (let i = 0; i < 900; i++) {
+    const x = r() * n;
+    const y = r() * n;
+    const len = 2 + r() * 6;
+    const a = -0.5 + r() * 1.0;
+    g.strokeStyle = r() > 0.5 ? `rgba(255,255,255,${alpha * r()})` : `rgba(0,0,0,${alpha * r()})`;
+    g.lineWidth = 0.6 + r() * 0.8;
+    g.beginPath();
+    g.moveTo(x, y);
+    g.lineTo(x + Math.cos(a) * len, y + Math.sin(a) * len);
+    g.stroke();
+  }
+  return t;
+}
+
 export interface MochilaTextures {
   map: THREE.CanvasTexture;
   bump: THREE.CanvasTexture;
@@ -256,12 +281,18 @@ export function getMochilaTextures(): MochilaTextures {
   cc.globalCompositeOperation = 'multiply';
   cc.fillStyle = cc.createPattern(stitchTile('#ffffff', '#d2c6c0'), 'repeat')!;
   cc.fillRect(0, 0, TEX_W, TEX_H);
+  cc.globalCompositeOperation = 'soft-light';
+  cc.fillStyle = cc.createPattern(fiberTile(0.5), 'repeat')!;
+  cc.fillRect(0, 0, TEX_W, TEX_H);
 
   const bump = document.createElement('canvas');
   bump.width = TEX_W;
   bump.height = TEX_H;
   const bc = bump.getContext('2d')!;
   bc.fillStyle = bc.createPattern(stitchTile('#ffffff', '#202020'), 'repeat')!;
+  bc.fillRect(0, 0, TEX_W, TEX_H);
+  bc.globalCompositeOperation = 'overlay';
+  bc.fillStyle = bc.createPattern(fiberTile(0.35), 'repeat')!;
   bc.fillRect(0, 0, TEX_W, TEX_H);
 
   const map = new THREE.CanvasTexture(color);

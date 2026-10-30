@@ -11,3 +11,6 @@ public/images/ensayo/
 public/documents/ensayo-guajira-entrega-final.docx
 # Internal school document, not a public deliverable.
 public/documents/hoja-de-ruta-2026.png
+
+# Internal review notes (kept local, not public)
+REVISION-INTERNA.md

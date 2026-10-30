@@ -3,7 +3,7 @@ import { chapterById, settings } from '@/content/project';
 import { physics, verifyDay, type Day } from '@/content/physics';
 import { ResourceShelf } from '@/components/resources/ResourceShelf';
 import { DocumentViewer } from '@/components/media/DocumentViewer';
-import { RouteMap } from '@/experiences/physics/RouteMap';
+import { JourneyMap } from '@/experiences/physics/JourneyMap';
 import { useMediaQuery, useReducedMotion } from '@/hooks/useMedia';
 import { ScrollTrigger } from '@/lib/gsap';
 import { asset } from '@/lib/asset';
@@ -11,96 +11,109 @@ import { asset } from '@/lib/asset';
 const meta = chapterById('fisica');
 const DAYS = physics.days;
 const N = DAYS.length;
-/** Within each day: arrive (map settles) → travel (vehicle drives) → hold (vectors + data). */
-const ARRIVE = 0.12;
-const TRAVEL_END = 0.6;
+/**
+ * Within each day (t ∈ 0–1): arrive (overview) → travel (camera follows the
+ * vehicle) → vectors draw on → hold (totals and speeds, long enough to read).
+ */
+const TRAVEL = [0.1, 0.52] as const;
+const VECTORS = [0.56, 0.7] as const;
+const HOLD = 0.56;
 
 const num = (n: number, d = 1) => n.toLocaleString('es-CO', { minimumFractionDigits: d, maximumFractionDigits: d });
+const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 const smooth = (x: number) => x * x * (3 - 2 * x);
 
 function phase(t: number) {
-  const travel = smooth(Math.min(1, Math.max(0, (t - ARRIVE) / (TRAVEL_END - ARRIVE))));
-  const holding = t >= TRAVEL_END;
-  // The view follows the vehicle while it drives, then pulls back to show the whole route.
-  const follow = t < ARRIVE || holding ? 0 : Math.sin(Math.PI * travel) * 0.9;
-  return { travel, holding, follow };
+  const travel = smooth(clamp01((t - TRAVEL[0]) / (TRAVEL[1] - TRAVEL[0])));
+  // Camera eases in to follow the vehicle, and back out to the overview at the end of the drive.
+  const follow = smooth(clamp01((t - TRAVEL[0] + 0.02) / 0.08)) * (1 - smooth(clamp01((t - TRAVEL[1] + 0.06) / 0.08)));
+  const vectors = clamp01((t - VECTORS[0]) / (VECTORS[1] - VECTORS[0]));
+  return { travel, follow, vectors, holding: t >= HOLD };
 }
 
-/** Which segment the vehicle is in, by share of the day's distance. */
-function segmentAt(day: Day, travel: number) {
+/**
+ * Segment progress along the drive. The vehicle's position on the traced line
+ * is split in proportion to each segment's distance (an approximation of the
+ * map, not GPS). Values are shown only once a segment is complete — never as a
+ * running counter — and always as written in the presentation.
+ */
+function segmentState(day: Day, travel: number) {
+  const sum = day.segments.reduce((acc, x) => acc + x.km, 0);
   let acc = 0;
-  for (let i = 0; i < day.segments.length; i++) {
-    acc += day.segments[i].km;
-    if (travel * day.total.km <= acc + 0.001) return i;
-  }
-  return day.segments.length - 1;
+  return day.segments.map((s) => {
+    const start = acc / sum;
+    acc += s.km;
+    const end = acc / sum;
+    return { active: travel > start && travel < end - 0.001, done: travel >= end - 0.001 };
+  });
 }
 
 const kindLabel = { 'rapidez-media': 'Rapidez media', 'rapidez-movimiento': 'Rapidez en movimiento', 'velocidad-media': 'Velocidad media (vector)' };
 
 function DayPanel({ day, t }: { day: Day; t: number }) {
   const { travel, holding } = phase(t);
-  const seg = segmentAt(day, travel);
-  const km = Math.round(travel * day.total.km);
+  const segs = segmentState(day, travel);
   const [chart, setChart] = useState(false);
   return (
-    <div className="flex h-full flex-col">
-      <p className="meta text-sand">Día {day.n}</p>
-      <p className="mt-1 font-mono text-[0.55rem] uppercase tracking-[0.12em] text-ivory/40 md:hidden">{physics.mapCredit} · ruta aproximada</p>
-      <h2 className="mt-2 font-display text-[clamp(1.9rem,3vw,3rem)] leading-[1.02]">{day.title}</h2>
-      <p className="mt-2 text-sm text-ivory/60">{day.lead}</p>
+    <div className="flex min-h-full flex-col">
+      <p className="meta text-sand">
+        Día {day.n} <span className="text-ivory/40">/ {N}</span>
+      </p>
+      <h2 className="mt-2 font-display text-[clamp(1.7rem,2.4vw,2.5rem)] leading-[1.02]">{day.title}</h2>
+      <p className="mt-1.5 text-[0.95rem] text-ivory/65">{day.lead}</p>
 
-      <div className="mt-6 grid grid-cols-3 gap-4 border-y border-ivory/10 py-4 font-mono">
-        <div>
-          <p className="text-[0.6rem] uppercase tracking-[0.16em] text-ivory/45">Distancia</p>
-          <p className="mt-1 text-xl tabular-nums md:text-2xl">
-            {holding ? day.total.km : km} <span className="text-xs text-ivory/50">km</span>
-          </p>
-        </div>
-        <div>
-          <p className="text-[0.6rem] uppercase tracking-[0.16em] text-ivory/45">En movimiento</p>
-          <p className="mt-1 text-xl tabular-nums md:text-2xl">
-            {num(day.total.hours, 2)} <span className="text-xs text-ivory/50">h</span>
-          </p>
-        </div>
-        <div>
-          <p className="text-[0.6rem] uppercase tracking-[0.16em] text-ivory/45">Horario</p>
-          <p className="mt-1 text-xl tabular-nums md:text-2xl">
-            {day.total.depart}–{day.total.arrive}
-          </p>
-        </div>
-      </div>
-
-      <ol className="mt-4 space-y-1 text-sm">
+      <ol className="mt-5 space-y-1.5">
         {day.segments.map((s, i) => (
-          <li key={s.code} className={`grid grid-cols-[3.2rem_1fr] gap-x-3 rounded-sm px-2 py-1.5 transition-colors lg:grid-cols-[3.2rem_1fr_auto] ${!holding && i === seg && t > ARRIVE ? 'bg-ivory/10 text-ivory' : 'text-ivory/65'}`}>
-            <span className="font-mono text-xs text-sand">{s.code}</span>
-            <span>
+          <li key={s.code} className={`rounded-sm px-3 py-2 transition-colors duration-500 ${segs[i].active ? 'bg-ivory/12' : ''}`}>
+            <p className={`text-[0.95rem] leading-snug transition-colors ${segs[i].active || segs[i].done ? 'text-ivory' : 'text-ivory/45'}`}>
+              <span className="mr-2 font-mono text-xs text-sand">{s.code}</span>
               {s.from} → {s.to}
-            </span>
-            <span className="col-start-2 font-mono text-xs tabular-nums text-ivory/60 lg:col-start-auto">
+            </p>
+            <p className={`mt-1 font-mono text-[0.78rem] tabular-nums text-ivory/70 transition-opacity duration-700 ${segs[i].done ? 'opacity-100' : 'opacity-0'}`} aria-hidden={!segs[i].done}>
               {s.km} km · {num(s.hours, 2)} h · {num(s.speed)} km/h
-            </span>
+            </p>
           </li>
         ))}
       </ol>
 
-      <div className={`mt-5 space-y-3 transition-opacity duration-700 ${holding ? 'opacity-100' : 'opacity-0'}`} aria-hidden={!holding}>
-        {day.speeds.map((s) => (
-          <div key={s.label} className="flex items-baseline justify-between gap-4 border-t border-ivory/10 pt-3">
-            <div>
-              <p className="text-[0.6rem] font-mono uppercase tracking-[0.16em] text-ivory/45">{kindLabel[s.kind]}</p>
-              <p className="text-sm text-ivory/70">
-                {s.label} <span className="font-mono text-xs text-ivory/45">{s.formula}</span>
-              </p>
-            </div>
-            <p className={`whitespace-nowrap font-display text-3xl tabular-nums ${s.kind === 'velocidad-media' ? 'text-gold' : ''}`}>
-              {num(s.value)} <span className="font-sans text-xs text-ivory/50">km/h</span>
+      <div className={`mt-5 transition-all duration-700 ${holding ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-3 opacity-0'}`} aria-hidden={!holding}>
+        <div className="grid grid-cols-3 gap-3 border-y border-ivory/12 py-4">
+          <div>
+            <p className="font-mono text-[0.6rem] uppercase tracking-[0.14em] text-ivory/50">Distancia</p>
+            <p className="mt-1 font-display text-3xl tabular-nums">
+              {day.total.km} <span className="font-sans text-xs text-ivory/55">km</span>
             </p>
           </div>
-        ))}
-        <button onClick={() => setChart(true)} className="btn-text pt-2 text-ivory/60 hover:text-ivory">
-          Gráfica distancia–tiempo del día <span className="arrow">→</span>
+          <div>
+            <p className="font-mono text-[0.6rem] uppercase tracking-[0.14em] text-ivory/50">En movimiento</p>
+            <p className="mt-1 font-display text-3xl tabular-nums">
+              {num(day.total.hours, 2)} <span className="font-sans text-xs text-ivory/55">h</span>
+            </p>
+          </div>
+          <div>
+            <p className="font-mono text-[0.6rem] uppercase tracking-[0.14em] text-ivory/50">Horario</p>
+            <p className="mt-1 font-display text-2xl tabular-nums">
+              {day.total.depart}–{day.total.arrive}
+            </p>
+          </div>
+        </div>
+        <div className="mt-3 space-y-2.5">
+          {day.speeds.map((sp) => (
+            <div key={sp.label} className="flex items-baseline justify-between gap-4">
+              <div className="min-w-0">
+                <p className="font-mono text-[0.6rem] uppercase tracking-[0.14em] text-ivory/50">{kindLabel[sp.kind]}</p>
+                <p className="text-sm text-ivory/75">
+                  {sp.label} <span className="font-mono text-xs text-ivory/50">{sp.formula}</span>
+                </p>
+              </div>
+              <p className={`whitespace-nowrap font-display text-[1.7rem] tabular-nums ${sp.kind === 'velocidad-media' ? 'text-gold' : ''}`}>
+                {num(sp.value)} <span className="font-sans text-xs text-ivory/55">km/h</span>
+              </p>
+            </div>
+          ))}
+        </div>
+        <button onClick={() => setChart(true)} className="btn-text mt-4 text-ivory/65 hover:text-ivory">
+          Gráfica distancia–tiempo <span className="arrow">→</span>
         </button>
       </div>
       <DocumentViewer lang="es" open={chart} onClose={() => setChart(false)} item={{ title: `Día ${day.n} · gráfica de la presentación`, src: asset(day.chart), kind: 'image' }} />
@@ -115,16 +128,43 @@ function Journey({ goToRef }: { goToRef: MutableRefObject<(i: number) => void> }
   const [showVectors, setShowVectors] = useState(true);
   const desktop = useMediaQuery('(min-width: 900px)');
   const reduced = useReducedMotion();
+  const [vh, setVh] = useState(() => window.innerHeight);
 
   useLayoutEffect(() => {
-    const st = ScrollTrigger.create({ trigger: wrap.current, start: 'top top', end: 'bottom bottom', onUpdate: (s) => setP(s.progress) });
-    setP(st.progress);
-    return () => st.kill();
+    // Scroll sets a target; the displayed progress eases toward it (smooth camera, no jumps).
+    let target = 0;
+    let shown = 0;
+    let raf = 0;
+    const tick = () => {
+      shown += (target - shown) * 0.12;
+      if (Math.abs(target - shown) < 0.00005) shown = target;
+      setP(shown);
+      if (shown !== target) raf = requestAnimationFrame(tick);
+    };
+    const st = ScrollTrigger.create({
+      trigger: wrap.current,
+      start: 'top top',
+      end: 'bottom bottom',
+      onUpdate: (s) => {
+        target = s.progress;
+        cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(tick);
+      },
+    });
+    target = shown = st.progress;
+    setP(shown);
+    const onResize = () => setVh(window.innerHeight);
+    window.addEventListener('resize', onResize);
+    return () => {
+      st.kill();
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', onResize);
+    };
   }, []);
 
   const f = Math.min(N - 0.0001, p * N);
   const dayIndex = Math.floor(f);
-  const t = reduced ? 0.8 : f - dayIndex;
+  const t = reduced ? 0.9 : f - dayIndex;
   const day = DAYS[dayIndex];
   const ph = phase(t);
 
@@ -132,39 +172,53 @@ function Journey({ goToRef }: { goToRef: MutableRefObject<(i: number) => void> }
     const el = wrap.current!;
     const top = el.getBoundingClientRect().top + window.scrollY;
     const span = el.offsetHeight - window.innerHeight;
-    window.scrollTo({ top: top + span * ((i + (reduced ? 0.5 : 0.75)) / N), behavior: reduced ? 'auto' : 'smooth' });
+    window.scrollTo({ top: top + span * ((i + (reduced ? 0.5 : 0.8)) / N), behavior: reduced ? 'auto' : 'smooth' });
   };
   goToRef.current = goTo;
 
-  return (
-    <>
-      <div ref={wrap} className="relative" style={{ height: `${N * (desktop ? 240 : 200) + 100}vh` }}>
-        <div className="sticky top-0 flex h-[100svh] flex-col overflow-hidden pt-[var(--nav-h)] md:flex-row">
-          <div className="relative flex min-h-0 flex-1 items-center justify-center p-3 md:p-6">
-            <RouteMap key={day.n} day={day} travel={ph.travel} showVectors={showVectors && (ph.holding || reduced)} follow={reduced ? 0 : ph.follow} className="h-full max-h-full max-w-full shadow-[0_40px_90px_-40px_rgba(0,0,0,.8)]" />
-          </div>
-          <div className="gutter relative h-[44svh] shrink-0 overflow-y-auto border-t border-ivory/10 py-5 md:h-auto md:w-[42%] md:max-w-[560px] md:border-l md:border-t-0 md:py-10">
-            <DayPanel day={day} t={t} />
-          </div>
-          <div className="absolute left-3 top-[calc(var(--nav-h)+0.75rem)] flex flex-wrap items-center gap-1.5 md:left-6">
-            <nav aria-label="Días del viaje" className="flex gap-1 rounded-full bg-ink/75 p-1 backdrop-blur">
-              {DAYS.map((d, i) => (
-                <button key={d.n} onClick={() => goTo(i)} aria-current={i === dayIndex ? 'step' : undefined} className={`rounded-full px-3 py-1.5 font-mono text-[0.66rem] uppercase tracking-[0.12em] transition-colors ${i === dayIndex ? 'bg-ivory text-ink' : 'text-ivory/70 hover:text-ivory'}`}>
-                  Día {d.n}
-                </button>
-              ))}
-            </nav>
-            <button onClick={() => setShowVectors((v) => !v)} aria-pressed={showVectors} className="rounded-full bg-ink/75 px-3 py-2 font-mono text-[0.62rem] uppercase tracking-[0.12em] text-ivory/80 backdrop-blur hover:text-ivory">
-              {showVectors ? 'Ocultar vectores' : 'Mostrar vectores'}
-            </button>
-          </div>
-          <p className="pointer-events-none absolute bottom-2 left-6 hidden max-w-[52%] font-mono text-[0.55rem] uppercase leading-relaxed tracking-[0.12em] text-ivory/45 md:block">
-            {physics.mapCredit} · ruta trazada aproximadamente sobre la captura, sin precisión GPS · las flechas son vectores de desplazamiento, no la ruta
-          </p>
-        </div>
-      </div>
+  const panelW = desktop ? Math.min(440, window.innerWidth * 0.34) : 0;
+  const inset = desktop ? { right: panelW + 24, bottom: 0 } : { right: 0, bottom: vh * 0.44 };
 
-    </>
+  return (
+    <div ref={wrap} className="relative" style={{ height: `${N * (desktop ? 260 : 220) + 100}vh` }}>
+      <div className="sticky top-0 h-[100svh] overflow-hidden">
+        <JourneyMap key={day.n} day={day} travel={reduced ? 1 : ph.travel} camera={{ follow: reduced ? 0 : ph.follow, vectors: reduced ? 1 : ph.vectors }} inset={inset} showVectors={showVectors} />
+
+        <aside
+          className="absolute inset-x-0 bottom-0 h-[44svh] overflow-y-auto bg-gradient-to-t from-[#071822] via-[#071822]/95 to-[#071822]/80 px-[var(--gutter)] pb-6 pt-5 backdrop-blur-md min-[900px]:inset-x-auto min-[900px]:bottom-6 min-[900px]:right-6 min-[900px]:top-[calc(var(--nav-h)+1.5rem)] min-[900px]:h-auto min-[900px]:rounded-[3px] min-[900px]:bg-[#071822]/78 min-[900px]:bg-none min-[900px]:px-7 min-[900px]:py-7 min-[900px]:shadow-[0_30px_80px_-30px_rgba(0,0,0,.8)]"
+          style={desktop ? { width: panelW } : undefined}
+          aria-live="polite"
+        >
+          <DayPanel day={day} t={t} />
+        </aside>
+
+        <div className="absolute left-3 right-3 top-[calc(var(--nav-h)+0.75rem)] space-y-2 md:left-6 md:right-auto">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <nav aria-label="Días del viaje" className="flex gap-1 rounded-full bg-ink/75 p-1 backdrop-blur">
+            {DAYS.map((d, i) => (
+              <button key={d.n} onClick={() => goTo(i)} aria-current={i === dayIndex ? 'step' : undefined} className={`rounded-full px-3 py-1.5 font-mono text-[0.66rem] uppercase tracking-[0.12em] transition-colors ${i === dayIndex ? 'bg-ivory text-ink' : 'text-ivory/70 hover:text-ivory'}`}>
+                Día {d.n}
+              </button>
+            ))}
+          </nav>
+          <button onClick={() => setShowVectors((v) => !v)} aria-pressed={showVectors} className="rounded-full bg-ink/75 px-3 py-2 font-mono text-[0.62rem] uppercase tracking-[0.12em] text-ivory/80 backdrop-blur hover:text-ivory">
+            {showVectors ? 'Ocultar vectores' : 'Mostrar vectores'}
+          </button>
+        </div>
+        <div className="pointer-events-none flex w-fit gap-4 rounded-full bg-ink/60 px-3 py-1.5 font-mono text-[0.6rem] uppercase tracking-[0.12em] text-ivory/85 backdrop-blur">
+          <span className="flex items-center gap-2">
+            <span className="h-[3px] w-6 rounded-full bg-ivory" /> Ruta por carretera
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="h-[3px] w-6 rounded-full bg-gold" /> Vector resultante
+          </span>
+        </div>
+        </div>
+        <p className="pointer-events-none absolute bottom-2 left-6 hidden max-w-[48%] font-mono text-[0.55rem] uppercase leading-relaxed tracking-[0.12em] text-ivory/50 min-[900px]:block">
+          {physics.mapCredit} · ruta trazada aproximadamente sobre la captura, sin precisión GPS
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -210,7 +264,7 @@ export default function PhysicsPage() {
       <Journey goToRef={goToRef} />
 
       {/* Route vs vector — the key distinction */}
-      <section className="gutter grid gap-10 border-t border-ivory/10 py-24 md:grid-cols-2 md:gap-20 md:py-32">
+      <section className="gutter grid gap-10 border-t border-ivory/10 py-16 md:grid-cols-2 md:gap-20 md:py-20">
         <div>
           <p className="meta text-sand">Trayectoria</p>
           <h2 className="display-md mt-3">La ruta por carretera</h2>
@@ -224,11 +278,20 @@ export default function PhysicsPage() {
       </section>
 
       {/* Full tables (source values + verification) */}
-      <section aria-labelledby="tablas" className="gutter border-t border-ivory/10 py-24 md:py-32">
-        <h2 id="tablas" className="display-lg">
-          Datos por día
-        </h2>
-        <p className="mt-4 max-w-[60ch] text-ivory/60">Valores tal como aparecen en la presentación. La columna “Verificación” recalcula cada operación con los mismos datos.</p>
+      <section aria-labelledby="tablas" className="gutter border-t border-ivory/10 py-16 md:py-20">
+        <details className="group">
+          <summary className="flex cursor-pointer list-none flex-wrap items-baseline justify-between gap-4 [&::-webkit-details-marker]:hidden">
+            <span>
+              <h2 id="tablas" className="display-md inline">
+                Datos completos por día
+              </h2>
+              <span className="mt-2 block max-w-[60ch] text-ivory/60">Tablas de la presentación con la verificación de cada operación y las notas de revisión.</span>
+            </span>
+            <span className="btn-pill border-ivory/25 text-ivory/80 group-open:border-ivory">
+              <span className="group-open:hidden">Abrir tablas</span>
+              <span className="hidden group-open:inline">Cerrar tablas</span>
+            </span>
+          </summary>
         <div className="mt-12 space-y-16">
           {DAYS.map((d) => {
             const v = verifyDay(d);
@@ -304,15 +367,45 @@ export default function PhysicsPage() {
             );
           })}
         </div>
+        </details>
       </section>
 
       {/* Fuel */}
-      <section aria-labelledby="combustible" className="gutter border-t border-ivory/10 bg-[#0e2531] py-24 md:py-32">
+      <section aria-labelledby="combustible" className="gutter border-t border-ivory/10 bg-[#0e2531] py-16 md:py-20">
         <p className="meta text-sand">Análisis final</p>
-        <h2 id="combustible" className="display-lg mt-3">
+        <h2 id="combustible" className="display-md mt-3">
           Combustible
         </h2>
-        <div className="mt-12 overflow-x-auto">
+        <dl className="mt-8 grid grid-cols-2 gap-6 md:grid-cols-4">
+          {physics.fuel.rows.map((r) => (
+            <div key={r.vehicle}>
+              <dt className="meta text-ivory/50">{r.vehicle}</dt>
+              <dd className="mt-1 font-display text-3xl tabular-nums">{r.km} km</dd>
+              <dd className="text-sm text-ivory/60">{r.days}</dd>
+            </div>
+          ))}
+          <div>
+            <dt className="meta text-ivory/50">Galones gastados</dt>
+            <dd className="mt-1 font-display text-3xl tabular-nums">{num(physics.fuel.total.gallons)}</dd>
+            <dd className="text-sm text-ivory/60">{physics.fuel.total.km} km en total</dd>
+          </div>
+          <div>
+            <dt className="meta text-ivory/50">Costo</dt>
+            <dd className="mt-1 font-display text-3xl text-gold">{physics.fuel.total.cost}</dd>
+            <dd className="text-sm text-ivory/60">{physics.fuel.priceLabel} {physics.fuel.rows[0].price}</dd>
+          </div>
+        </dl>
+        <ul className="mt-8 max-w-3xl space-y-2 border-l-2 border-gold/70 pl-4 text-sm text-ivory/75">
+          {physics.fuel.review.map((r) => (
+            <li key={r}>{r}</li>
+          ))}
+        </ul>
+        <details className="group mt-8">
+          <summary className="btn-text cursor-pointer list-none text-ivory/70 hover:text-ivory [&::-webkit-details-marker]:hidden">
+            <span className="group-open:hidden">Ver tabla de combustible</span>
+            <span className="hidden group-open:inline">Ocultar tabla</span> <span className="arrow">↓</span>
+          </summary>
+        <div className="mt-6 overflow-x-auto">
           <table className="w-full min-w-[720px] text-sm">
             <thead>
               <tr className="border-b border-ivory/15 text-left font-mono text-[0.62rem] uppercase tracking-[0.12em] text-ivory/45">
@@ -349,11 +442,7 @@ export default function PhysicsPage() {
             </tbody>
           </table>
         </div>
-        <ul className="mt-8 max-w-3xl space-y-2 border-l-2 border-gold/70 pl-4 text-sm text-ivory/75">
-          {physics.fuel.review.map((r) => (
-            <li key={r}>{r}</li>
-          ))}
-        </ul>
+        </details>
       </section>
 
       <ResourceShelf

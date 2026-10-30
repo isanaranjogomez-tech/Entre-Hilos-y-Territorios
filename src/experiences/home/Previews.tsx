@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { physics } from '@/content/physics';
 import { science } from '@/content/science';
 import { RouteMap } from '@/experiences/physics/RouteMap';
-import { LagoonScene } from '@/experiences/science/LagoonScene';
+import { LagoonWorld } from '@/experiences/science/LagoonWorld';
 import { useReducedMotion } from '@/hooks/useMedia';
 import { asset } from '@/lib/asset';
 
@@ -40,13 +40,15 @@ export function MapPreview({ active }: { active: boolean }) {
   );
 }
 
-/** Ciencias: the illustrated lagoon with one of the team's photographs, at its real size. */
+/** Ciencias: the lagoon split at the waterline (as in the chapter), with one of the team's photographs. */
 export function LagoonPreview() {
   const p = science.photos[0];
   return (
-    <div className="absolute inset-0">
-      <LagoonScene className="h-full w-full" />
-      <figure className="absolute bottom-5 right-5 w-[min(48%,253px)] shadow-[0_20px_40px_-20px_rgba(20,56,72,.7)]">
+    <div className="absolute inset-0 overflow-hidden bg-[#2f6f79]">
+      <div className="absolute inset-x-0 top-[-55%] h-[300%]">
+        <LagoonWorld />
+      </div>
+      <figure className="absolute bottom-5 right-5 w-[min(48%,253px)] rotate-[1.5deg] bg-[#fbf8f1] p-1.5 shadow-[0_20px_40px_-20px_rgba(7,24,34,.8)]">
         <img src={asset(p.src)} alt={p.alt} width={253} height={112} className="w-full" loading="lazy" />
       </figure>
     </div>

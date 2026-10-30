@@ -139,7 +139,7 @@ export const WayuuMochila3D = forwardRef<THREE.Group, Props>(function WayuuMochi
   return (
     <group ref={ref}>
       <mesh geometry={body} castShadow receiveShadow>
-        <meshStandardMaterial map={map} bumpMap={bump} bumpScale={1.6} roughness={0.92} metalness={0} />
+        <meshPhysicalMaterial map={map} bumpMap={bump} bumpScale={1.4} roughness={0.95} metalness={0} sheen={0.6} sheenRoughness={0.75} sheenColor="#fff1e0" />
       </mesh>
       <mesh geometry={body} material={overlayMat} scale={1.004} renderOrder={2} />
 

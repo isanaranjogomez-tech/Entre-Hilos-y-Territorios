@@ -15,7 +15,7 @@ function Caption({ i, active }: { i: number; active: boolean }) {
   return (
     <div
       aria-hidden={!active}
-      className={`absolute inset-x-0 bottom-0 transition-all ease-out lg:inset-y-0 lg:flex lg:flex-col lg:justify-center lg:pt-[var(--nav-h)] ${active ? 'translate-y-0 opacity-100 delay-200 duration-700' : 'pointer-events-none translate-y-3 opacity-0 duration-200'}`}
+      className={`absolute inset-x-0 bottom-0 transition-all ease-out lg:inset-y-0 lg:flex lg:flex-col lg:justify-center lg:pt-[var(--nav-h)] ${active ? 'translate-y-0 opacity-100 delay-300 duration-[900ms]' : 'pointer-events-none translate-y-3 opacity-0 duration-300'}`}
     >
       <p className="meta text-magenta">
         {s.step} <span className="text-navy/40">/ 0{scenes.length}</span>
@@ -70,7 +70,7 @@ export function MathematicsScrollController() {
   const opening = stage.stage === 0;
 
   return (
-    <div ref={wrap} className="relative" style={{ height: `${S * (desktop ? 200 : 165) + 100}vh` }}>
+    <div ref={wrap} className="relative" style={{ height: `${S * (desktop ? 230 : 190) + 100}vh` }}>
       <div className="sticky top-0 h-[100svh] overflow-hidden text-navy" style={{ background: 'radial-gradient(ellipse at 62% 46%, #fdfaf4 0%, #f1e9dc 48%, #e2d4bf 100%)' }}>
         <div className="absolute inset-0">
           <Suspense fallback={null}>

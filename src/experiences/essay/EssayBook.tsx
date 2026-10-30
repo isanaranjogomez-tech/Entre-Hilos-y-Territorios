@@ -1,7 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { essay, type Argument, type Citation, type EssaySection, type Figure } from '@/content/essay';
 import { useMediaQuery, useReducedMotion } from '@/hooks/useMedia';
-import { ScrollTrigger } from '@/lib/gsap';
 import { asset } from '@/lib/asset';
 import { isAvailable } from '@/content/publication';
 
@@ -230,96 +229,159 @@ function buildSpreads(): Spread[] {
 
 const paper = 'bg-[linear-gradient(180deg,#fbf7ef_0%,#f5eee1_100%)]';
 
-function Page({ side, children, turnKey }: { side: 'left' | 'right'; children: ReactNode; turnKey: string }) {
+/** Book geometry (px): outer page margin and vertical padding. */
+const M = 44;
+const PY = 46;
+
+/**
+ * One section laid out as printed pages: its text flows in columns, one column
+ * per page, so it fills the left page and continues on the right — and on the
+ * next spreads when it is long. `spread` picks which pair of pages is visible.
+ */
+function SectionPages({ s, pageW, height, spread, onCount }: { s: Spread; pageW: number; height: number; spread: number; onCount: (n: number) => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || !pageW) return;
+    const measure = () => onCount(Math.max(1, Math.ceil(Math.ceil((el.scrollWidth - 1) / pageW) / 2)));
+    measure();
+    document.fonts?.ready.then(measure);
+    const imgs = [...el.querySelectorAll('img')];
+    imgs.forEach((i) => i.addEventListener('load', measure));
+    return () => imgs.forEach((i) => i.removeEventListener('load', measure));
+  }, [pageW, height, onCount]);
   return (
-    <div className={`relative h-full overflow-hidden ${paper} ${side === 'left' ? 'shadow-[inset_-30px_0_40px_-30px_rgba(20,56,72,.25)]' : 'shadow-[inset_30px_0_40px_-30px_rgba(20,56,72,.25)]'}`}>
-      <div key={turnKey} className={`h-full overflow-y-auto px-8 py-10 lg:px-12 lg:py-12 ${side === 'right' ? 'animate-[page-turn-in_.9s_cubic-bezier(.2,.7,.2,1)_both]' : 'animate-[page-fade-in_.9s_ease_both]'}`} style={{ transformOrigin: 'left center' }}>
-        {children}
-      </div>
+    <div
+      ref={ref}
+      className="text-navy transition-transform duration-[900ms] ease-[cubic-bezier(.65,0,.25,1)] [&_figure]:break-inside-avoid [&_h4]:break-after-avoid [&_img]:max-h-[34vh] [&_img]:w-auto [&_img]:max-w-full [&_li]:break-inside-avoid"
+      style={{
+        width: pageW * 2,
+        height,
+        padding: `${PY}px ${M}px`,
+        columnWidth: pageW - 2 * M,
+        columnGap: 2 * M,
+        columnFill: 'auto',
+        transform: `translateX(${-spread * pageW * 2}px)`,
+      }}
+    >
+      <p className="font-display text-6xl italic leading-none text-magenta/80">{s.numeral}</p>
+      <h3 className="mt-5 font-display text-[clamp(1.8rem,2.5vw,2.7rem)] leading-[1.05]">{s.title}</h3>
+      <div className="mt-6 text-[0.98rem]">{s.aside}</div>
+      <div className="mt-8 border-t border-navy/10 pt-6 [&_p]:text-[1.04rem] [&_p]:leading-[1.72]">{s.body}</div>
     </div>
   );
 }
 
 /**
- * The interactive book. Desktop: a sticky open book; scrolling turns to the
- * next section (a restrained page movement, no flip-book effect), and ribbon
- * tabs jump directly. Phones and reduced motion: the same spreads as
- * readable stacked pages.
+ * The interactive book. Desktop: a sticky open book; each section is set as
+ * real facing pages and scrolling turns them (a restrained horizontal page
+ * movement, no flip-book effect). Ribbon tabs jump to a section. Phones and
+ * reduced motion: the same sections as readable stacked pages.
  */
 export function EssayBook() {
   const spreads = buildSpreads();
-  const n = spreads.length;
   const wrap = useRef<HTMLDivElement>(null);
-  const [index, setIndex] = useState(0);
+  const frame = useRef<HTMLDivElement>(null);
+  const [p, setP] = useState(0);
+  const [pageW, setPageW] = useState(0);
+  const [height, setHeight] = useState(0);
+  const [counts, setCounts] = useState<number[]>(() => spreads.map(() => 1));
   const desktop = useMediaQuery('(min-width: 1024px)');
   const reduced = useReducedMotion();
   const book = desktop && !reduced;
 
+  // One "turn" per visible spread, across all sections.
+  const turns = counts.flatMap((c, si) => Array.from({ length: c }, (_, k) => ({ si, k })));
+  const turn = Math.min(turns.length - 1, Math.floor(p * turns.length));
+  const { si, k } = turns[turn];
+  const firstTurn = (i: number) => counts.slice(0, i).reduce((a, b) => a + b, 0);
+
+  const setCount = useRef(spreads.map((_, i) => (c: number) => setCounts((prev) => (prev[i] === c ? prev : prev.map((x, j) => (j === i ? c : x)))))).current;
+
   useLayoutEffect(() => {
     if (!book) return;
-    const st = ScrollTrigger.create({
-      trigger: wrap.current,
-      start: 'top top',
-      end: 'bottom bottom',
-      onUpdate: (s) => setIndex(Math.min(n - 1, Math.floor(s.progress * n))),
+    const el = frame.current!;
+    const ro = new ResizeObserver(() => {
+      setPageW(Math.floor(el.clientWidth / 2));
+      setHeight(el.clientHeight);
     });
-    return () => st.kill();
-  }, [book, n]);
+    ro.observe(el);
+    // Progress from live geometry: the book grows once its pages are measured.
+    const onScroll = () => {
+      const w = wrap.current;
+      if (!w) return;
+      const span = w.offsetHeight - window.innerHeight;
+      setP(Math.min(1, Math.max(0, -w.getBoundingClientRect().top / span)));
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [book]);
 
   const goTo = (i: number) => {
     const el = wrap.current!;
     const top = el.getBoundingClientRect().top + window.scrollY;
     const span = el.offsetHeight - window.innerHeight;
-    window.scrollTo({ top: top + span * ((i + 0.5) / n), behavior: 'smooth' });
+    window.scrollTo({ top: top + span * ((firstTurn(i) + 0.5) / turns.length), behavior: 'smooth' });
   };
 
   if (!book) {
     return (
       <div className="gutter space-y-6 py-12">
-        {spreads.map((s) => (
-          <article key={s.id} id={s.id} className={`${paper} px-6 py-8 text-navy shadow-[0_20px_50px_-30px_rgba(20,56,72,.5)]`}>
-            <p className="font-display text-3xl italic text-magenta/80">{s.numeral}</p>
-            <h3 className="display-md mt-2">{s.title}</h3>
-            <div className="mt-5">{s.body}</div>
-            <div className="mt-6 border-t border-navy/10 pt-4">{s.aside}</div>
+        {spreads.map((sp) => (
+          <article key={sp.id} id={sp.id} className={`${paper} px-6 py-9 text-navy shadow-[0_20px_50px_-30px_rgba(20,56,72,.5)] sm:px-10`}>
+            <p className="font-display text-3xl italic text-magenta/80">{sp.numeral}</p>
+            <h3 className="display-md mt-2">{sp.title}</h3>
+            <div className="mt-5 text-[0.98rem]">{sp.aside}</div>
+            <div className="mt-6 border-t border-navy/10 pt-6 [&_p]:text-[1.05rem] [&_p]:leading-[1.75]">{sp.body}</div>
           </article>
         ))}
       </div>
     );
   }
 
-  const s = spreads[index];
+  const page = firstTurn(si) * 2 + k * 2 + 1;
   return (
-    <div ref={wrap} className="relative" style={{ height: `${n * 110}vh` }}>
-      <div className="sticky top-0 flex h-[100svh] items-center justify-center px-[var(--gutter)] pt-[var(--nav-h)]">
-        <div className="relative w-full max-w-[1180px]" style={{ perspective: '2200px' }}>
+    <div ref={wrap} className="relative" style={{ height: `${turns.length * 85 + 40}vh` }}>
+      <div className="sticky top-0 flex h-[100svh] items-center justify-center px-[var(--gutter)] pt-[calc(var(--nav-h)+2rem)]">
+        <div className="relative w-full max-w-[1240px]" style={{ perspective: '2200px' }}>
           {/* ribbon tabs */}
-          <nav aria-label="Secciones del ensayo" className="absolute -top-12 left-0 right-0 flex flex-wrap justify-center gap-1">
+          <nav aria-label="Secciones del ensayo" className="absolute -top-11 left-0 right-0 flex flex-wrap justify-center gap-1">
             {spreads.map((sp, i) => (
               <button
                 key={sp.id}
                 onClick={() => goTo(i)}
-                aria-current={i === index ? 'page' : undefined}
-                className={`rounded-t-md px-3 pb-1.5 pt-2 font-mono text-[0.62rem] uppercase tracking-[0.14em] transition-colors ${i === index ? 'bg-magenta text-ivory' : 'bg-navy/10 text-navy/60 hover:bg-navy/20'}`}
+                aria-current={i === si ? 'page' : undefined}
+                className={`rounded-t-md px-3 pb-1.5 pt-2 font-mono text-[0.64rem] uppercase tracking-[0.14em] transition-colors ${i === si ? 'bg-magenta text-ivory' : 'bg-navy/10 text-navy/65 hover:bg-navy/20'}`}
               >
                 {sp.short}
               </button>
             ))}
           </nav>
-          <div className="grid h-[min(70vh,680px)] grid-cols-2 shadow-[0_60px_120px_-50px_rgba(20,56,72,.55)]" style={{ transform: 'rotateX(4deg)' }}>
-            <Page side="left" turnKey={`l-${s.id}`}>
-              <p className="font-display text-6xl italic leading-none text-magenta/80">{s.numeral}</p>
-              <h3 className="mt-6 font-display text-[clamp(1.7rem,2.4vw,2.6rem)] leading-[1.05] text-navy">{s.title}</h3>
-              <div className="mt-8">{s.aside}</div>
-              <p className="absolute bottom-6 left-12 font-mono text-[0.6rem] text-navy/40">
-                {index + 1} / {n}
+          <div ref={frame} className="relative grid h-[min(76vh,760px)] grid-cols-2 shadow-[0_60px_120px_-50px_rgba(20,56,72,.55)]" style={{ transform: 'rotateX(3deg)' }}>
+            <div className={`${paper} shadow-[inset_-30px_0_40px_-30px_rgba(20,56,72,.25)]`} />
+            <div className={`${paper} shadow-[inset_30px_0_40px_-30px_rgba(20,56,72,.25)]`} />
+            <div className="absolute inset-0 overflow-hidden">
+              {spreads.map((sp, i) => (
+                <div key={sp.id} className={`absolute inset-0 transition-opacity duration-500 ${i === si ? 'opacity-100' : 'pointer-events-none opacity-0'}`} aria-hidden={i !== si}>
+                  <SectionPages s={sp} pageW={pageW} height={height} spread={i === si ? k : 0} onCount={setCount[i]} />
+                </div>
+              ))}
+            </div>
+            <p className="pointer-events-none absolute bottom-4 left-11 font-mono text-[0.6rem] text-navy/40">{page}</p>
+            <p className="pointer-events-none absolute bottom-4 right-11 font-mono text-[0.6rem] text-navy/40">{page + 1}</p>
+            {counts[si] > 1 && (
+              <p className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 font-mono text-[0.6rem] uppercase tracking-[0.14em] text-navy/40">
+                {spreads[si].short} · {k + 1} / {counts[si]}
               </p>
-            </Page>
-            <Page side="right" turnKey={`r-${s.id}`}>
-              <div className="text-navy">{s.body}</div>
-            </Page>
+            )}
           </div>
-          <span className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-navy/15" aria-hidden />
+          <span className="pointer-events-none absolute bottom-0 left-1/2 top-0 w-px -translate-x-1/2 bg-navy/15" aria-hidden />
         </div>
       </div>
     </div>

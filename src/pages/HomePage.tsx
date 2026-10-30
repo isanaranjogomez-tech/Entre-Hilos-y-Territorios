@@ -1,7 +1,6 @@
 import { Suspense, lazy, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { chapters, project, settings, visibleChapters } from '@/content/project';
-import { sourceInventory } from '@/content/sources';
+import { project, visibleChapters } from '@/content/project';
 import type { ChapterId, ChapterMeta } from '@/content/types';
 import { FilmFrame } from '@/components/editorial/ChapterVisuals';
 import { PendingSlot } from '@/components/editorial/PendingSlot';
@@ -50,7 +49,7 @@ const visualFor: Record<ChapterId, (hovered: boolean) => ReactNode> = {
   ),
   ciencias: () => <LagoonPreview />,
   fisica: (h) => <MapPreview active={h} />,
-  ingles: () => <FilmFrame className="absolute inset-0" />,
+  ingles: (h) => <FilmFrame className="absolute inset-0" playing={h} />,
   'lenguaje-sociales': () => <BookVisual />,
 };
 
@@ -90,9 +89,6 @@ function IndexEntry({ c }: { c: ChapterMeta }) {
   );
 }
 
-const statusWord = { complete: 'Integrado', pending: 'Pendiente', partial: 'Parcial' };
-const calendarKey: Partial<Record<ChapterId, string>> = { matematicas: 'Infografía', ciencias: 'Póster', ingles: 'Entrevista', 'lenguaje-sociales': 'Texto' };
-
 export default function HomePage() {
   const root = useRef<HTMLDivElement>(null);
   useGsap(() => {
@@ -119,12 +115,15 @@ export default function HomePage() {
             {heroPhoto ? <img src={asset(heroPhoto.src)} alt={heroPhoto.alt} className="h-full w-full object-cover" /> : <GuajiraLandscape className="h-full w-full" />}
           </div>
           <div className="absolute inset-0 bg-gradient-to-b from-ink/55 via-ink/10 to-ink/75" aria-hidden />
-          <p className="absolute bottom-4 right-[var(--gutter)] font-mono text-[0.56rem] uppercase tracking-[0.16em] text-ivory/40">{heroPhoto ? heroPhoto.credit : 'Ilustración del paisaje · no es una fotografía del viaje'}</p>
+          <p className="absolute right-[var(--gutter)] top-[calc(var(--nav-h)+0.5rem)] font-mono text-[0.56rem] uppercase tracking-[0.16em] text-ivory/40 md:bottom-4 md:top-auto">{heroPhoto ? heroPhoto.credit : 'Ilustración del paisaje · no es una fotografía del viaje'}</p>
         </div>
 
         <div className="relative -mt-[100svh]">
+          <a href="#indice-capitulos" className="sr-only focus:not-sr-only">
+            Ir a los capítulos
+          </a>
           {/* Title */}
-          <div data-title className="gutter flex h-[100svh] flex-col justify-center pt-[var(--nav-h)]">
+          <div data-title className="gutter flex h-[100svh] flex-col justify-center pb-36 pt-[var(--nav-h)] md:pb-28">
             <p data-fade className="meta text-sand">
               {project.program} · {project.institution}
             </p>
@@ -143,96 +142,63 @@ export default function HomePage() {
             <p data-fade className="mt-8 max-w-[40ch] text-lg leading-relaxed text-ivory/90 [text-shadow:0_1px_18px_rgba(7,24,34,.9)] md:text-xl">
               {project.subtitle}
             </p>
-            <p data-fade className="meta mt-4 text-ivory/45">
-              A digital exhibition · five ways of reading La Guajira
-            </p>
           </div>
 
-          {/* The question */}
-          <div className="gutter flex min-h-[90svh] items-center">
+          {/* The five rooms, reachable from the first screen */}
+          <nav aria-label="Capítulos" className="gutter absolute inset-x-0 top-[calc(100svh-7.5rem)] md:top-[calc(100svh-7rem)]">
+            <ol data-fade className="-mx-[var(--gutter)] flex snap-x gap-6 overflow-x-auto border-t border-ivory/20 px-[var(--gutter)] pb-2 pt-4 [scrollbar-width:none] md:mx-0 md:grid md:grid-cols-5 md:overflow-visible md:px-0">
+              {visibleChapters.map((c) => (
+                <li key={c.id} lang={c.lang} className="min-w-[10.5rem] snap-start md:min-w-0">
+                  <Link to={c.path} className="group block">
+                    <span className="meta text-sand/80">
+                      {c.numeral} · {c.subject}
+                    </span>
+                    <span className="mt-1 block font-display text-[1.15rem] leading-tight text-ivory/90 transition-colors group-hover:text-sand md:text-[1.35rem]">{c.title}</span>
+                  </Link>
+                </li>
+              ))}
+            </ol>
+          </nav>
+
+          {/* The question and the IB concepts */}
+          <div className="gutter flex min-h-[86svh] flex-col justify-center py-20">
             <div className="max-w-5xl">
               <p className="meta text-sand">La pregunta de investigación</p>
               <p className="mt-6 font-display text-[clamp(1.9rem,4vw,4rem)] leading-[1.05] [text-shadow:0_2px_30px_rgba(7,24,34,.6)]">
                 <Question />
               </p>
             </div>
-          </div>
-
-          {/* The IB concepts */}
-          <div className="gutter flex min-h-[70svh] flex-col justify-center pb-16">
-            <p className="meta text-ivory/50">Conceptos transversales del IB</p>
-            <ul className="mt-5 flex flex-wrap gap-x-12 gap-y-3">
-              {project.ibConcepts.map((c) => (
-                <li key={c} className="font-display text-[clamp(2rem,4vw,3.6rem)] italic leading-none">
-                  {c}
-                </li>
-              ))}
-            </ul>
-            <a href="#indice-capitulos" className="btn-text mt-10 text-ivory/70 hover:text-ivory">
-              Recorrer los capítulos <span className="arrow">↓</span>
-            </a>
+            <div className="mt-14">
+              <p className="meta text-ivory/55">Conceptos transversales del IB</p>
+              <ul className="mt-4 flex flex-wrap gap-x-10 gap-y-2">
+                {project.ibConcepts.map((c) => (
+                  <li key={c} className="font-display text-[clamp(1.8rem,3.4vw,3rem)] italic leading-none text-ivory/90">
+                    {c}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Chapter index */}
-      <section id="indice-capitulos" aria-labelledby="indice-title" className="gutter scroll-mt-[var(--nav-h)] py-24 md:py-36">
-        <div className="mb-16 flex flex-wrap items-end justify-between gap-6 md:mb-24">
+      <section id="indice-capitulos" aria-labelledby="indice-title" className="gutter scroll-mt-[var(--nav-h)] pb-24 pt-16 md:pb-32 md:pt-20">
+        <div className="mb-12 flex flex-wrap items-end justify-between gap-6 md:mb-16">
           <h2 id="indice-title" className="display-xl">
             Cinco <span className="italic text-sand">miradas</span>
           </h2>
           <p className="max-w-[36ch] text-ivory/55">Cada disciplina es una sala de la exposición, con su propio lenguaje. Entra en el orden que prefieras.</p>
         </div>
-        <ol className="grid gap-x-10 gap-y-24 md:grid-cols-12 md:gap-y-20">
+        <ol className="grid gap-x-10 gap-y-16 md:grid-cols-12 md:gap-y-16">
           {visibleChapters.map((c) => (
             <IndexEntry key={c.id} c={c} />
           ))}
         </ol>
       </section>
 
-      {/* Archive */}
-      <section aria-labelledby="archivo-title" className="gutter border-t border-ivory/10 py-24 md:py-32">
-        <div className="grid gap-14 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-          <div>
-            <h2 id="archivo-title" className="display-lg">
-              Archivo
-            </h2>
-            <p className="mt-5 max-w-[34ch] text-sm leading-relaxed text-ivory/55">{project.officialName}. Fechas de la hoja de ruta oficial.</p>
-          </div>
-          <ol>
-            {chapters
-              .filter((c) => c.id !== 'fisica' || settings.physicsMode !== 'hidden')
-              .map((c) => {
-                const key = calendarKey[c.id];
-                const cal = key ? project.calendar.find((x) => x.what.startsWith(key)) : undefined;
-                return (
-                  <li key={c.id} className="border-t border-ivory/10">
-                    <Link to={c.path} className="group grid grid-cols-[2.5rem_1fr] gap-x-4 gap-y-1 py-4 md:grid-cols-[2.5rem_1fr_9rem_7rem] md:items-baseline">
-                      <span className="font-mono text-xs text-ivory/40">{c.numeral}</span>
-                      <span className="font-display text-xl transition-colors group-hover:text-sand" lang={c.lang}>
-                        {c.subject} <span className="text-ivory/45">— {c.product}</span>
-                      </span>
-                      <span className="meta col-start-2 text-ivory/45 md:col-start-auto">{cal?.when ?? '—'}</span>
-                      <span className={`meta col-start-2 md:col-start-auto ${c.status === 'complete' ? 'text-turquoise' : 'text-gold'}`}>{statusWord[c.status]}</span>
-                    </Link>
-                  </li>
-                );
-              })}
-          </ol>
-        </div>
-
-        <div className="mt-24 grid gap-14 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-          <p className="meta text-ivory/45">Notas para revisión académica</p>
-          <ul className="space-y-4 text-sm leading-relaxed text-ivory/65">
-            {sourceInventory.flags.map((f) => (
-              <li key={f} className="border-l border-magenta/60 pl-4">
-                {f}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <footer className="mt-28 grid gap-10 border-t border-ivory/10 pt-10 md:grid-cols-3">
+      <section aria-label="Créditos" className="gutter border-t border-ivory/10 pb-16 pt-12">
+        <footer className="grid gap-10 md:grid-cols-3">
           <p className="font-display text-3xl leading-none">
             Entre hilos <span className="italic text-sand">y territorios</span>
           </p>
