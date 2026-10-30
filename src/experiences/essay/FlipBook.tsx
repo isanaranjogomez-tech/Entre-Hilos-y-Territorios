@@ -155,6 +155,26 @@ function buildLeaves(onRead: () => void): Leaf[] {
           <Folio n={n} side="r" />
         </div>
       ),
+      back: () => (
+        <div className="flex h-full items-end justify-center pb-[calc(var(--u)*5)]">
+          <p className="font-mono text-[length:calc(var(--u)*0.85)] uppercase tracking-[0.22em] text-navy/35">Entre hilos y territorios · La Guajira 2026</p>
+        </div>
+      ),
+      label: 'Libro cerrado',
+    },
+    {
+      // Back board: endpaper inside, back cover outside.
+      hard: true,
+      front: () => <div className="h-full bg-[#e9dfcc]" />,
+      back: () => (
+        <div className="flex h-full flex-col items-center justify-center gap-[calc(var(--u)*1.6)] bg-[linear-gradient(225deg,#1b4354_0%,#143848_55%,#0e2a36_100%)] text-center text-ivory">
+          <p className="font-display text-[length:calc(var(--u)*2.4)] leading-none">
+            El atlas <span className="italic text-sand">de los</span> argumentos
+          </p>
+          <p className="font-mono text-[length:calc(var(--u)*0.85)] uppercase tracking-[0.22em] text-sand/80">Lenguaje y Sociales · Grado noveno · 2026</p>
+        </div>
+      ),
+      label: 'Libro cerrado',
     },
   ];
 }
@@ -184,18 +204,32 @@ function Sheet({ leaf, index, refCb }: { leaf: Leaf; index: number; refCb: (el: 
   }, [refCb]);
   const front = leaf.front(index * 2 + 1);
   const back = leaf.back?.(index * 2 + 2);
+  if (leaf.hard) {
+    // Boards are rigid: one full-width face each side, no hinge (and no seam).
+    return (
+      <div ref={inner} className="absolute left-1/2 top-0 h-full w-1/4 origin-left [transform-style:preserve-3d]">
+        <div className="absolute inset-y-0 left-0 w-[200%] overflow-hidden rounded-r-[3px] [backface-visibility:hidden]">{front}</div>
+        {back && (
+          <div className={`absolute inset-y-0 left-0 w-[200%] overflow-hidden rounded-l-[3px] [backface-visibility:hidden] ${paper}`} style={{ transform: 'rotateY(180deg)' }}>
+            {back}
+          </div>
+        )}
+        <div ref={outer} className="hidden" />
+      </div>
+    );
+  }
   return (
-    <div ref={inner} className="absolute left-1/2 top-0 h-full w-1/4 origin-left [transform-style:preserve-3d]" >
-      <Half offset={0} hard={leaf.hard}>{front}</Half>
+    <div ref={inner} className="absolute left-1/2 top-0 h-full w-1/4 origin-left [transform-style:preserve-3d]">
+      <Half offset={0}>{front}</Half>
       {back && (
-        <Half offset={1} back hard={leaf.hard}>
+        <Half offset={1} back>
           {back}
         </Half>
       )}
       <div ref={outer} className="absolute left-full top-0 h-full w-full origin-left [transform-style:preserve-3d]">
-        <Half offset={1} hard={leaf.hard}>{front}</Half>
+        <Half offset={1}>{front}</Half>
         {back && (
-          <Half offset={0} back hard={leaf.hard}>
+          <Half offset={0} back>
             {back}
           </Half>
         )}
@@ -214,7 +248,9 @@ function Sheet({ leaf, index, refCb }: { leaf: Leaf; index: number; refCb: (el: 
 export function FlipBook({ onRead }: { onRead: () => void }) {
   const leaves = buildLeaves(onRead);
   const L = leaves.length;
-  const MAX = L - 1; // the last sheet stays on the right
+  const READ_END = L - 2; // conclusion spread
+  const CLOSED = L; // every sheet turned: the book is shut on its back cover
+  const SEGMENTS = READ_END + 2; // reading states + the closed state
   const wide = useMediaQuery('(min-width: 768px)');
   const reduced = useReducedMotion();
   const animated = wide && !reduced;
@@ -251,12 +287,13 @@ export function FlipBook({ onRead }: { onRead: () => void }) {
       const w = wrap.current;
       if (!w) return;
       const p = Math.min(1, Math.max(0, -w.getBoundingClientRect().top / (w.offsetHeight - window.innerHeight)));
-      setTurned(Math.min(MAX, Math.floor(p * (MAX + 1))));
+      const seg = Math.min(SEGMENTS - 1, Math.floor(p * SEGMENTS));
+      setTurned(seg <= READ_END ? seg : CLOSED);
     };
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
-  }, [animated, MAX]);
+  }, [animated, READ_END, CLOSED, SEGMENTS]);
 
   // Animate sheets toward the target, one after another, at a calm pace.
   useEffect(() => {
@@ -277,7 +314,8 @@ export function FlipBook({ onRead }: { onRead: () => void }) {
         onUpdate: () => pose(i, proxy.a, dir),
       });
     });
-    gsap.to(book.current, { xPercent: turned === 0 ? -25 : 0, duration: 1.2, ease: 'power3.inOut' });
+    // Closed at the start: cover on the right half → slide left to centre. Closed at the end: on the left half → slide right.
+    gsap.to(book.current, { xPercent: turned === 0 ? -25 : turned === CLOSED ? 25 : 0, duration: 1.3, delay: turned === CLOSED ? 0.6 : 0, ease: 'power3.inOut' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [turned, animated]);
 
@@ -290,11 +328,11 @@ export function FlipBook({ onRead }: { onRead: () => void }) {
   }, [animated]);
 
   const goTo = (n: number) => {
-    const t = Math.max(0, Math.min(MAX, n));
+    const seg = Math.max(0, Math.min(SEGMENTS - 1, n >= CLOSED ? SEGMENTS - 1 : n));
     const w = wrap.current!;
     const top = w.getBoundingClientRect().top + window.scrollY;
     const span = w.offsetHeight - window.innerHeight;
-    window.scrollTo({ top: top + span * ((t + 0.5) / (MAX + 1)), behavior: 'smooth' });
+    window.scrollTo({ top: top + span * ((seg + 0.5) / SEGMENTS), behavior: 'smooth' });
   };
 
   useEffect(() => {
@@ -312,9 +350,9 @@ export function FlipBook({ onRead }: { onRead: () => void }) {
   if (!animated) {
     // Readable stacked pages (same content, in reading order), with a larger type unit.
     const pages: { node: ReactNode; photo: boolean }[] = [];
-    leaves.forEach((l, i) => {
+    leaves.slice(0, READ_END + 1).forEach((l, i) => {
       pages.push({ node: l.front(i * 2 + 1), photo: i >= 3 && i <= 5 });
-      if (l.back && i < MAX) pages.push({ node: l.back(i * 2 + 2), photo: i === 1 });
+      if (l.back && i < READ_END) pages.push({ node: l.back(i * 2 + 2), photo: i === 1 });
     });
     return (
       <div className="gutter space-y-5 py-10" style={{ ['--u' as string]: 'min(2.6vw, 1.15rem)' } as CSSProperties}>
@@ -328,15 +366,16 @@ export function FlipBook({ onRead }: { onRead: () => void }) {
   }
 
   const label = turned === 0 ? 'Portada' : leaves[turned - 1].label ?? '';
+  const open = turned > 0 && turned < CLOSED;
   return (
-    <div ref={wrap} className="relative" style={{ height: `${(MAX + 1) * 75 + 100}vh` }}>
+    <div ref={wrap} className="relative" style={{ height: `${SEGMENTS * 75 + 100}vh` }}>
       <div className="sticky top-0 flex h-[100svh] flex-col items-center justify-center gap-6 pt-[var(--nav-h)]">
-        <div className="relative" style={{ width: 'min(1120px, 92vw, calc((100svh - 220px) * 1.44))', aspectRatio: '1.44', perspective: '2600px' }}>
+        <div className="relative" style={{ width: 'min(1120px, 92vw, calc((100svh - 260px) * 1.44))', aspectRatio: '1.44', perspective: '2600px' }}>
           <div ref={book} className="absolute inset-0 [transform-style:preserve-3d]">
             <div className="absolute inset-0 [container-type:inline-size] [transform-style:preserve-3d]" style={{ ['--u' as string]: '1cqw' } as CSSProperties}>
               {/* boards and page-block edges */}
-              <div className="absolute inset-y-[-0.8%] right-[-0.8%] rounded-[4px] bg-[#143848] shadow-[0_50px_100px_-40px_rgba(20,56,72,.65)] transition-[left] duration-700" style={{ left: turned === 0 ? '49.2%' : '-0.8%', transform: 'translateZ(-2px)' }} />
-              <div className="absolute inset-y-[0.4%] left-1/2 right-[-0.5%] rounded-r-[3px] bg-[repeating-linear-gradient(90deg,#efe6d6_0,#efe6d6_1px,#ddd2bf_2px)]" style={{ transform: 'translateZ(-1px)' }} />
+              <div className="absolute inset-y-[-0.8%] rounded-[4px] bg-[#143848] shadow-[0_50px_100px_-40px_rgba(20,56,72,.65)] transition-[left,right] duration-700" style={{ left: turned === 0 ? '49.2%' : '-0.8%', right: turned === CLOSED ? '49.2%' : '-0.8%', transform: 'translateZ(-2px)' }} />
+              {turned < CLOSED && <div className="absolute inset-y-[0.4%] left-1/2 right-[-0.5%] rounded-r-[3px] bg-[repeating-linear-gradient(90deg,#efe6d6_0,#efe6d6_1px,#ddd2bf_2px)]" style={{ transform: 'translateZ(-1px)' }} />}
               {turned > 0 && <div className="absolute inset-y-[0.4%] left-[-0.5%] right-1/2 rounded-l-[3px] bg-[repeating-linear-gradient(90deg,#ddd2bf_0,#efe6d6_1px,#efe6d6_2px)]" style={{ transform: 'translateZ(-1px)' }} />}
               {/* cast shadow on the page below a lifting sheet */}
               <div data-cast className="pointer-events-none absolute inset-y-0 left-1/2 right-0 opacity-0" style={{ background: 'linear-gradient(to right, rgba(20,40,50,.28), rgba(20,40,50,0) 55%)', transform: `translateZ(${L * 0.7 + 0.9}px)` }} />
@@ -344,22 +383,31 @@ export function FlipBook({ onRead }: { onRead: () => void }) {
                 <Sheet key={i} leaf={leaf} index={i} refCb={refCbs[i]} total={L} />
               ))}
               {/* spine */}
-              <div className="pointer-events-none absolute inset-y-0 left-1/2 w-[3%] -translate-x-1/2 bg-[linear-gradient(to_right,rgba(20,40,50,0),rgba(20,40,50,.16)_48%,rgba(255,255,255,.18)_52%,rgba(20,40,50,0))]" style={{ opacity: turned === 0 ? 0 : 1, transform: `translateX(-50%) translateZ(${L * 0.7 + 1}px)` }} />
+              <div className="pointer-events-none absolute inset-y-0 left-1/2 w-[3%] -translate-x-1/2 bg-[linear-gradient(to_right,rgba(20,40,50,0),rgba(20,40,50,.16)_48%,rgba(255,255,255,.18)_52%,rgba(20,40,50,0))]" style={{ opacity: open ? 1 : 0, transition: 'opacity .6s', transform: `translateX(-50%) translateZ(${L * 0.7 + 1}px)` }} />
             </div>
           </div>
         </div>
 
         <nav aria-label="Páginas del libro" className="flex items-center gap-5 text-navy">
-          <button onClick={() => goTo(turned - 1)} disabled={turned === 0} className="btn-text disabled:opacity-30">
+          <button onClick={() => goTo(turned === CLOSED ? READ_END : turned - 1)} disabled={turned === 0} className="btn-text disabled:opacity-30">
             ← Anterior
           </button>
           <p className="meta min-w-[12rem] text-center text-navy/60" aria-live="polite">
             {label}
           </p>
-          <button onClick={() => goTo(turned + 1)} disabled={turned === MAX} className="btn-text disabled:opacity-30">
+          <button onClick={() => goTo(turned + 1)} disabled={turned === CLOSED} className="btn-text disabled:opacity-30">
             Siguiente →
           </button>
         </nav>
+        {/* Once the book has closed, the full text is offered quietly. */}
+        <button
+          onClick={onRead}
+          tabIndex={turned === CLOSED ? 0 : -1}
+          aria-hidden={turned !== CLOSED}
+          className={`btn-pill -mt-2 border-navy/30 text-navy transition-all duration-700 hover:border-navy ${turned === CLOSED ? 'translate-y-0 opacity-100 delay-[1600ms]' : 'pointer-events-none translate-y-2 opacity-0'}`}
+        >
+          Leer ensayo completo
+        </button>
       </div>
     </div>
   );

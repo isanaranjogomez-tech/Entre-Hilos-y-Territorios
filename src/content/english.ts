@@ -26,11 +26,17 @@ export const english = {
   roleplayNote:
     'This interview is a role-play prepared by ninth-grade students, as required by the Language Arts brief, and presented as a 2D animation. The guests are students interpreting Wayuu speakers; they are not members of the Wayuu community.',
   video: {
-    src: 'video/discovering-the-wayuu-culture.mp4',
-    captions: 'video/discovering-the-wayuu-culture.en.vtt',
+    /**
+     * Final edited version (copy_86A317DB-E672-40A2-96F4-E14BAE879695.mov, 2026-10-30),
+     * remuxed to MP4 without re-encoding (H.264 1920×1080 + AAC, as edited). At 301 MB it
+     * exceeds GitHub's 100 MB per-file limit, so it is hosted as a release asset of this repo.
+     */
+    src: 'https://github.com/isanaranjogomez-tech/Entre-Hilos-y-Territorios/releases/download/video-ingles-final-2026-10-30/voices-of-la-guajira-final-2026-10-30.mp4',
+    /** Subtitles from the original .srt, retimed to the final edit (2 s removed at ≈ 3:02). */
+    captions: 'video/voices-of-la-guajira-final-2026-10-30.en.vtt',
     /** Poster frame — export a still from the video to /public/images and set it here. */
     poster: null as string | null,
-    durationLabel: '3:50',
+    durationLabel: '3:48',
     /** Subtitles are burned into the video image. */
     burnedInSubtitles: true,
   },
@@ -41,7 +47,7 @@ export const english = {
     { role: 'Team', names: 'Daniel Sierra · Julieta Borda · Luciana Mulett · Santiago Cortes · Isabella Naranjo' },
   ],
   durationNote:
-    'For academic review: the interview runs about 3 minutes 50 seconds; the Language Arts brief asks for 2–3 minutes. It is presented complete, without cuts.',
+    'For academic review: the interview runs about 3 minutes 48 seconds; the Language Arts brief asks for 2–3 minutes. It is presented complete, as edited.',
   /** Question-based chapters, timecodes from the subtitle file. */
   chapters: [
     { t: 7.34, label: 'Welcome' },
@@ -50,7 +56,7 @@ export const english = {
     { t: 109.34, label: 'What are the most important Wayuu traditions?' },
     { t: 138.03, label: 'What language do Wayuu people speak?' },
     { t: 170.65, label: 'How do Wayuu people preserve their culture today?' },
-    { t: 201.18, label: 'Closing' },
+    { t: 199.18, label: 'Closing' },
   ],
   /** Language Arts resources proposed by the school. */
   proposedResources: [

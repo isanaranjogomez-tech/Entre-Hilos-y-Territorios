@@ -51,10 +51,18 @@ export function DocumentViewer({ item, open, onClose, lang = 'es' }: Props) {
     if (!open) return;
     lastFocus.current = document.activeElement;
     closeBtn.current?.focus({ preventScroll: true });
-    const html = document.documentElement;
-    const prev = html.style.overflow;
-    html.style.overflow = 'hidden';
+    // Layout-neutral scroll lock. Setting overflow:hidden on <html> stops <body>
+    // (overflow-x: hidden) from propagating to the viewport, so <body> becomes
+    // its own scroll container: sticky stages (Física, Ciencias, the book) lose
+    // their scroller and the scrollbar reflow can move the page. Instead, block
+    // the scrolling inputs and restore the exact position on close.
+    const savedY = window.scrollY;
+    const block = (e: Event) => e.preventDefault();
+    const SCROLL_KEYS = new Set([' ', 'PageUp', 'PageDown', 'Home', 'End', 'ArrowUp', 'ArrowDown']);
+    window.addEventListener('wheel', block, { passive: false });
+    window.addEventListener('touchmove', block, { passive: false });
     const onKey = (e: KeyboardEvent) => {
+      if (SCROLL_KEYS.has(e.key) && !(e.target instanceof HTMLButtonElement || e.target instanceof HTMLAnchorElement)) e.preventDefault();
       if (e.key === 'Escape') onCloseRef.current();
       if (item.kind !== 'image') return;
       if (e.key === '+' || e.key === '=') zoom(0.5);
@@ -67,7 +75,9 @@ export function DocumentViewer({ item, open, onClose, lang = 'es' }: Props) {
     window.addEventListener('keydown', onKey);
     return () => {
       window.removeEventListener('keydown', onKey);
-      html.style.overflow = prev;
+      window.removeEventListener('wheel', block);
+      window.removeEventListener('touchmove', block);
+      if (Math.abs(window.scrollY - savedY) > 1) window.scrollTo({ top: savedY, behavior: 'auto' });
       (lastFocus.current as HTMLElement | null)?.focus?.({ preventScroll: true });
       setScale(1);
       setPos({ x: 0, y: 0 });

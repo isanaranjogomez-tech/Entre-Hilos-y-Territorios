@@ -25,6 +25,9 @@
   body {
     @apply bg-ink font-sans text-ivory antialiased;
     overflow-x: hidden;
+    /* clip (not hidden): never turns <body> into a scroll container, so locking
+       <html> for a modal cannot detach the sticky stages from the viewport. */
+    overflow-x: clip;
   }
 
   ::selection {
