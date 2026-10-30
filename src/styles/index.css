@@ -1,0 +1,189 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --navy: #143848;
+    --navy-deep: #0b2230;
+    --ink: #071822;
+    --ivory: #f4ede2;
+    --sand: #d6a874;
+    --magenta: #b02a5e;
+    --turquoise: #1ca5a3;
+    --gold: #e3c34b;
+    --nav-h: 64px;
+    /* One spacing rhythm for every page. */
+    --gutter: clamp(20px, 4.5vw, 72px);
+    color-scheme: dark light;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-ink font-sans text-ivory antialiased;
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background: var(--magenta);
+    color: var(--ivory);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 3px;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display font-normal;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+}
+
+@layer components {
+  .gutter {
+    padding-inline: var(--gutter);
+  }
+
+  /* Small mono metadata line, shared by every chapter. */
+  .meta {
+    @apply font-mono text-[0.66rem] uppercase tracking-[0.2em];
+  }
+
+  .display-hero {
+    font-size: clamp(3.4rem, 12vw, 13rem);
+    line-height: 0.86;
+    letter-spacing: -0.02em;
+  }
+
+  .display-xl {
+    font-size: clamp(2.9rem, 8vw, 8.5rem);
+    line-height: 0.9;
+    letter-spacing: -0.015em;
+  }
+
+  .display-lg {
+    font-size: clamp(2.2rem, 5vw, 4.8rem);
+    line-height: 0.98;
+    letter-spacing: -0.01em;
+  }
+
+  .display-md {
+    font-size: clamp(1.7rem, 3vw, 2.8rem);
+    line-height: 1.05;
+  }
+
+  .lede {
+    @apply text-lg leading-relaxed md:text-xl;
+  }
+
+  .measure {
+    max-width: 60ch;
+  }
+
+  .link-underline {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-size: 0% 1px;
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    transition: background-size 0.5s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  .link-underline:hover,
+  .link-underline:focus-visible {
+    background-size: 100% 1px;
+  }
+
+  /* Text button: label + arrow, no box. */
+  .btn-text {
+    @apply inline-flex items-center gap-3 font-mono text-[0.7rem] uppercase tracking-[0.2em] transition-colors duration-300;
+  }
+  .btn-text > .arrow {
+    transition: transform 0.4s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  .btn-text:hover > .arrow {
+    transform: translateX(6px);
+  }
+
+  .btn-pill {
+    @apply inline-flex items-center gap-3 rounded-full border px-5 py-3 font-mono text-[0.68rem] uppercase tracking-[0.18em] transition-colors duration-300;
+  }
+
+  .grain {
+    position: relative;
+  }
+  .grain::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.06;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .page-enter {
+    animation: page-enter 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes scrollcue {
+  0% {
+    transform: translateY(-100%);
+  }
+  60%,
+  100% {
+    transform: translateY(300%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Essay book: restrained page movement (no flip-book effect). */
+@keyframes page-turn-in {
+  from {
+    opacity: 0;
+    transform: rotateY(-14deg) translateX(-1.5%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
