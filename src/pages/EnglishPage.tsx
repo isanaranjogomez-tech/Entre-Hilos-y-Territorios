@@ -29,6 +29,7 @@ function PosterLoop() {
     <video
       ref={ref}
       src={asset(english.video.src)}
+      poster={english.video.poster ? asset(english.video.poster) : undefined}
       muted
       playsInline
       preload="metadata"

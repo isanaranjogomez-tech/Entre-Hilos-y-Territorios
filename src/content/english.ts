@@ -34,8 +34,10 @@ export const english = {
     src: 'https://github.com/isanaranjogomez-tech/Entre-Hilos-y-Territorios/releases/download/video-ingles-final-2026-10-30/voices-of-la-guajira-final-2026-10-30.mp4',
     /** Subtitles from the original .srt, retimed to the final edit (2 s removed at ≈ 3:02). */
     captions: 'video/voices-of-la-guajira-final-2026-10-30.en.vtt',
-    /** Poster frame — export a still from the video to /public/images and set it here. */
-    poster: null as string | null,
+    /** Still from the final video at 0:07 (all five characters, no titles or subtitles), 1920×1080 WebP. */
+    poster: 'images/ingles/voices-of-la-guajira-0007.webp' as string | null,
+    /** The same still at 1280×720, for the index plate on the home page. */
+    still: 'images/ingles/voices-of-la-guajira-0007-1280.webp',
     durationLabel: '3:48',
     /** Subtitles are burned into the video image. */
     burnedInSubtitles: true,
