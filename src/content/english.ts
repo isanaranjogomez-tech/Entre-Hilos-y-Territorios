@@ -42,8 +42,8 @@ export const english = {
   },
   /** Names as they appear in the video (lower third) and its subtitles. */
   credits: [
-    { role: 'Interviewer (as shown in the video)', names: 'Daniel' },
-    { role: 'Guests (as introduced in the interview)', names: 'Isabella and Santiago' },
+    { role: 'Interviewers (as shown in the video)', names: 'Daniel, Julieta and Luciana' },
+    { role: 'Wayuu guests (as shown in the video)', names: 'Isabella and Santiago' },
     { role: 'Team', names: 'Daniel Sierra · Julieta Borda · Luciana Mulett · Santiago Cortes · Isabella Naranjo' },
   ],
   durationNote:
