@@ -5,28 +5,47 @@ import { ResourceShelf } from '@/components/resources/ResourceShelf';
 import { DocumentViewer } from '@/components/media/DocumentViewer';
 import { JourneyMap } from '@/experiences/physics/JourneyMap';
 import { useMediaQuery, useReducedMotion } from '@/hooks/useMedia';
-import { ScrollTrigger } from '@/lib/gsap';
 import { asset } from '@/lib/asset';
 
 const meta = chapterById('fisica');
 const DAYS = physics.days;
 const N = DAYS.length;
 /**
- * Within each day (t ∈ 0–1): arrive (overview) → travel (camera follows the
- * vehicle) → vectors draw on → hold (totals and speeds, long enough to read).
+ * Within each day (t ∈ 0–1): arrive (overview) → the camera eases in → the
+ * vehicle drives at a steady visual pace → the camera eases back out →
+ * vectors draw on → hold (totals and speeds, long enough to read).
+ * The scroll is the single progress controller; nothing runs on its own clock.
  */
-const TRAVEL = [0.1, 0.52] as const;
-const VECTORS = [0.56, 0.7] as const;
-const HOLD = 0.56;
+const FOLLOW_IN = [0.03, 0.13] as const;
+const TRAVEL = [0.14, 0.62] as const;
+const FOLLOW_OUT = [0.63, 0.74] as const;
+const VECTORS = [0.74, 0.84] as const;
+const HOLD = 0.72;
+/** Intro (cover → map) length, in day units. */
+const INTRO = 0.7;
 
 const num = (n: number, d = 1) => n.toLocaleString('es-CO', { minimumFractionDigits: d, maximumFractionDigits: d });
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 const smooth = (x: number) => x * x * (3 - 2 * x);
+const ramp = (t: number, [a, b]: readonly [number, number]) => smooth(clamp01((t - a) / (b - a)));
+
+/**
+ * Trapezoidal pace: gentle acceleration over the first 15 %, constant speed,
+ * gentle stop over the last 15 %. Applied to arc length (see `polyline`), so
+ * the vehicle's on-screen speed is even across segments of different length.
+ */
+function pace(x: number, e = 0.15) {
+  const v = 1 / (1 - e); // cruise speed so that the total distance is 1
+  if (x <= 0) return 0;
+  if (x >= 1) return 1;
+  if (x < e) return (v / (2 * e)) * x * x;
+  if (x > 1 - e) return 1 - (v / (2 * e)) * (1 - x) * (1 - x);
+  return v * (x - e / 2);
+}
 
 function phase(t: number) {
-  const travel = smooth(clamp01((t - TRAVEL[0]) / (TRAVEL[1] - TRAVEL[0])));
-  // Camera eases in to follow the vehicle, and back out to the overview at the end of the drive.
-  const follow = smooth(clamp01((t - TRAVEL[0] + 0.02) / 0.08)) * (1 - smooth(clamp01((t - TRAVEL[1] + 0.06) / 0.08)));
+  const travel = pace(clamp01((t - TRAVEL[0]) / (TRAVEL[1] - TRAVEL[0])));
+  const follow = ramp(t, FOLLOW_IN) * (1 - ramp(t, FOLLOW_OUT));
   const vectors = clamp01((t - VECTORS[0]) / (VECTORS[1] - VECTORS[0]));
   return { travel, follow, vectors, holding: t >= HOLD };
 }
@@ -121,7 +140,32 @@ function DayPanel({ day, t }: { day: Day; t: number }) {
   );
 }
 
-/** The sticky map stage. Owns the scroll state so only this part re-renders while scrolling. */
+/** Cover: the real day-2 route and its resultant vector, drawn as a cartographic line. */
+function CoverRoute() {
+  const d = DAYS[1];
+  const pts = d.route;
+  const xs = pts.map((q) => q[0]);
+  const ys = pts.map((q) => q[1]);
+  const pad = 60;
+  const vb = [Math.min(...xs) - pad, Math.min(...ys) - pad, Math.max(...xs) - Math.min(...xs) + pad * 2, Math.max(...ys) - Math.min(...ys) + pad * 2];
+  const path = pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x} ${y}`).join(' ');
+  const r = d.vectors.find((v) => v.kind === 'resultante') ?? d.vectors[d.vectors.length - 1];
+  return (
+    <svg viewBox={vb.join(' ')} className="h-full w-full" aria-hidden preserveAspectRatio="xMidYMid meet">
+      <path d={path} fill="none" stroke="#d6a874" strokeOpacity=".2" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round" />
+      <path d={path} fill="none" stroke="#f4ede2" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" pathLength={1} className="ph-draw" />
+      <line x1={r.from[0]} y1={r.from[1]} x2={r.to[0]} y2={r.to[1]} stroke="#e3c34b" strokeWidth="3" strokeDasharray="2 14" strokeLinecap="round" className="ph-fade" />
+      <circle cx={pts[0][0]} cy={pts[0][1]} r="11" fill="#0b1d27" stroke="#f4ede2" strokeWidth="4" />
+      <circle cx={pts[pts.length - 1][0]} cy={pts[pts.length - 1][1]} r="11" fill="#b02a5e" stroke="#f4ede2" strokeWidth="4" className="ph-fade" />
+    </svg>
+  );
+}
+
+/**
+ * The sticky stage. One scroll progress drives everything: first the cover
+ * (which fades and recedes while the map scales in), then the five days.
+ * The displayed progress eases toward the scroll target, so the camera never jumps.
+ */
 function Journey({ goToRef }: { goToRef: MutableRefObject<(i: number) => void> }) {
   const wrap = useRef<HTMLDivElement>(null);
   const [p, setP] = useState(0);
@@ -129,40 +173,49 @@ function Journey({ goToRef }: { goToRef: MutableRefObject<(i: number) => void> }
   const desktop = useMediaQuery('(min-width: 900px)');
   const reduced = useReducedMotion();
   const [vh, setVh] = useState(() => window.innerHeight);
+  const [vw, setVw] = useState(() => window.innerWidth);
 
   useLayoutEffect(() => {
-    // Scroll sets a target; the displayed progress eases toward it (smooth camera, no jumps).
     let target = 0;
     let shown = 0;
     let raf = 0;
     const tick = () => {
-      shown += (target - shown) * 0.12;
-      if (Math.abs(target - shown) < 0.00005) shown = target;
+      shown += (target - shown) * 0.1;
+      if (Math.abs(target - shown) < 0.00003) shown = target;
       setP(shown);
       if (shown !== target) raf = requestAnimationFrame(tick);
     };
-    const st = ScrollTrigger.create({
-      trigger: wrap.current,
-      start: 'top top',
-      end: 'bottom bottom',
-      onUpdate: (s) => {
-        target = s.progress;
-        cancelAnimationFrame(raf);
-        raf = requestAnimationFrame(tick);
-      },
-    });
-    target = shown = st.progress;
+    // Progress from live geometry (robust to late layout changes).
+    const read = () => {
+      const w = wrap.current;
+      if (!w) return 0;
+      return clamp01(-w.getBoundingClientRect().top / (w.offsetHeight - window.innerHeight));
+    };
+    const onScroll = () => {
+      target = read();
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(tick);
+    };
+    target = shown = read();
     setP(shown);
-    const onResize = () => setVh(window.innerHeight);
+    const onResize = () => {
+      setVh(window.innerHeight);
+      setVw(window.innerWidth);
+      onScroll();
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onResize);
     return () => {
-      st.kill();
       cancelAnimationFrame(raf);
+      window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onResize);
     };
   }, []);
 
-  const f = Math.min(N - 0.0001, p * N);
+  const U = INTRO + N;
+  const units = p * U;
+  const intro = reduced ? 1 : clamp01(units / INTRO);
+  const f = Math.min(N - 0.0001, Math.max(0, units - INTRO));
   const dayIndex = Math.floor(f);
   const t = reduced ? 0.9 : f - dayIndex;
   const day = DAYS[dayIndex];
@@ -172,51 +225,88 @@ function Journey({ goToRef }: { goToRef: MutableRefObject<(i: number) => void> }
     const el = wrap.current!;
     const top = el.getBoundingClientRect().top + window.scrollY;
     const span = el.offsetHeight - window.innerHeight;
-    window.scrollTo({ top: top + span * ((i + (reduced ? 0.5 : 0.8)) / N), behavior: reduced ? 'auto' : 'smooth' });
+    window.scrollTo({ top: top + span * ((INTRO + i + (reduced ? 0.5 : 0.86)) / U), behavior: reduced ? 'auto' : 'smooth' });
   };
   goToRef.current = goTo;
 
-  const panelW = desktop ? Math.min(440, window.innerWidth * 0.34) : 0;
-  const inset = desktop ? { right: panelW + 24, bottom: 0 } : { right: 0, bottom: vh * 0.44 };
+  // A solid information column (desktop) or band (phone); the map is framed beside it, never under it.
+  const panelW = desktop ? Math.min(420, Math.round(vw * 0.3)) : 0;
+  const bandH = desktop ? 0 : Math.round(vh * 0.42);
+  const stage = smooth(clamp01((intro - 0.35) / 0.65));
+  const coverOut = smooth(clamp01(intro / 0.75));
+  const totalKm = DAYS.reduce((acc, d) => acc + d.total.km, 0);
 
   return (
-    <div ref={wrap} className="relative" style={{ height: `${N * (desktop ? 260 : 220) + 100}vh` }}>
-      <div className="sticky top-0 h-[100svh] overflow-hidden">
-        <JourneyMap key={day.n} day={day} travel={reduced ? 1 : ph.travel} camera={{ follow: reduced ? 0 : ph.follow, vectors: reduced ? 1 : ph.vectors }} inset={inset} showVectors={showVectors} />
+    <div ref={wrap} className="relative" style={{ height: `${U * (desktop ? 300 : 250) + 100}vh` }}>
+      <div className="sticky top-0 h-[100svh] overflow-hidden bg-[#0b1d27]">
+        {/* Map stage — scales in from the cover */}
+        <div className="absolute inset-0" style={{ opacity: stage, transform: `scale(${1.08 - 0.08 * stage})` }} aria-hidden={stage < 0.5}>
+          <div className="absolute inset-y-0 left-0" style={{ right: panelW, bottom: bandH }}>
+            <JourneyMap key={day.n} day={day} travel={reduced ? 1 : ph.travel} camera={{ follow: reduced ? 0 : ph.follow, vectors: reduced ? 1 : ph.vectors }} inset={{ right: 0, bottom: 0 }} showVectors={showVectors} />
+          </div>
 
-        <aside
-          className="absolute inset-x-0 bottom-0 h-[44svh] overflow-y-auto bg-gradient-to-t from-[#071822] via-[#071822]/95 to-[#071822]/80 px-[var(--gutter)] pb-6 pt-5 backdrop-blur-md min-[900px]:inset-x-auto min-[900px]:bottom-6 min-[900px]:right-6 min-[900px]:top-[calc(var(--nav-h)+1.5rem)] min-[900px]:h-auto min-[900px]:rounded-[3px] min-[900px]:bg-[#071822]/78 min-[900px]:bg-none min-[900px]:px-7 min-[900px]:py-7 min-[900px]:shadow-[0_30px_80px_-30px_rgba(0,0,0,.8)]"
-          style={desktop ? { width: panelW } : undefined}
-          aria-live="polite"
-        >
-          <DayPanel day={day} t={t} />
-        </aside>
+          <aside
+            className="absolute inset-x-0 bottom-0 overflow-y-auto border-t border-ivory/10 bg-[#0b1d27] px-[var(--gutter)] pb-6 pt-5 min-[900px]:inset-y-0 min-[900px]:left-auto min-[900px]:border-l min-[900px]:border-t-0 min-[900px]:px-9 min-[900px]:pb-8 min-[900px]:pt-[calc(var(--nav-h)+2rem)]"
+            style={desktop ? { width: panelW } : { height: bandH }}
+            aria-live="polite"
+          >
+            <DayPanel day={day} t={t} />
+          </aside>
 
-        <div className="absolute left-3 right-3 top-[calc(var(--nav-h)+0.75rem)] space-y-2 md:left-6 md:right-auto">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <nav aria-label="Días del viaje" className="flex gap-1 rounded-full bg-ink/75 p-1 backdrop-blur">
-            {DAYS.map((d, i) => (
-              <button key={d.n} onClick={() => goTo(i)} aria-current={i === dayIndex ? 'step' : undefined} className={`rounded-full px-3 py-1.5 font-mono text-[0.66rem] uppercase tracking-[0.12em] transition-colors ${i === dayIndex ? 'bg-ivory text-ink' : 'text-ivory/70 hover:text-ivory'}`}>
-                Día {d.n}
+          <div className="absolute left-3 top-[calc(var(--nav-h)+0.75rem)] space-y-2 md:left-6" style={{ right: panelW ? panelW + 12 : 12 }}>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <nav aria-label="Días del viaje" className="flex gap-1 rounded-full bg-[#0b1d27] p-1">
+                {DAYS.map((d, i) => (
+                  <button key={d.n} onClick={() => goTo(i)} aria-current={i === dayIndex ? 'step' : undefined} className={`rounded-full px-3 py-1.5 font-mono text-[0.66rem] uppercase tracking-[0.12em] transition-colors ${i === dayIndex ? 'bg-ivory text-ink' : 'text-ivory/70 hover:text-ivory'}`}>
+                    Día {d.n}
+                  </button>
+                ))}
+              </nav>
+              <button onClick={() => setShowVectors((v) => !v)} aria-pressed={showVectors} className="rounded-full bg-[#0b1d27] px-3 py-2 font-mono text-[0.62rem] uppercase tracking-[0.12em] text-ivory/80 hover:text-ivory">
+                {showVectors ? 'Ocultar vectores' : 'Mostrar vectores'}
               </button>
-            ))}
-          </nav>
-          <button onClick={() => setShowVectors((v) => !v)} aria-pressed={showVectors} className="rounded-full bg-ink/75 px-3 py-2 font-mono text-[0.62rem] uppercase tracking-[0.12em] text-ivory/80 backdrop-blur hover:text-ivory">
-            {showVectors ? 'Ocultar vectores' : 'Mostrar vectores'}
-          </button>
+            </div>
+            <div className="pointer-events-none flex w-fit gap-4 rounded-full bg-[#0b1d27]/90 px-3 py-1.5 font-mono text-[0.6rem] uppercase tracking-[0.12em] text-ivory/85">
+              <span className="flex items-center gap-2">
+                <span className="h-[3px] w-6 rounded-full bg-ivory" /> Ruta por carretera
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="h-[3px] w-6 rounded-full bg-gold" /> Vector resultante
+              </span>
+            </div>
+          </div>
+          <p className="pointer-events-none absolute bottom-2 left-6 hidden font-mono text-[0.55rem] uppercase leading-relaxed tracking-[0.12em] text-ivory/55 min-[900px]:block" style={{ right: panelW + 24 }}>
+            {physics.mapCredit} · ruta trazada aproximadamente sobre la captura, sin precisión GPS
+          </p>
         </div>
-        <div className="pointer-events-none flex w-fit gap-4 rounded-full bg-ink/60 px-3 py-1.5 font-mono text-[0.6rem] uppercase tracking-[0.12em] text-ivory/85 backdrop-blur">
-          <span className="flex items-center gap-2">
-            <span className="h-[3px] w-6 rounded-full bg-ivory" /> Ruta por carretera
-          </span>
-          <span className="flex items-center gap-2">
-            <span className="h-[3px] w-6 rounded-full bg-gold" /> Vector resultante
-          </span>
-        </div>
-        </div>
-        <p className="pointer-events-none absolute bottom-2 left-6 hidden max-w-[48%] font-mono text-[0.55rem] uppercase leading-relaxed tracking-[0.12em] text-ivory/50 min-[900px]:block">
-          {physics.mapCredit} · ruta trazada aproximadamente sobre la captura, sin precisión GPS
-        </p>
+
+        {/* Cover — the whole first screen; it fades and recedes on the first scroll */}
+        {coverOut < 1 && (
+          <section
+            aria-label="Portada"
+            className="absolute inset-0 overflow-hidden"
+            style={{ opacity: 1 - coverOut, transform: `scale(${1 - 0.06 * coverOut}) translateY(${-4 * coverOut}vh)` }}
+          >
+            <div className="absolute inset-0 opacity-50" style={{ backgroundImage: 'linear-gradient(rgba(244,237,226,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(244,237,226,.05) 1px, transparent 1px)', backgroundSize: '72px 72px' }} aria-hidden />
+            <div className="absolute inset-y-[12%] right-[4%] w-[46%] opacity-30 max-[899px]:inset-x-[8%] max-[899px]:inset-y-[8%] max-[899px]:w-auto min-[900px]:opacity-100">
+              <CoverRoute />
+            </div>
+            <div className="gutter relative flex h-full flex-col justify-center pt-[var(--nav-h)] min-[900px]:w-[60%]">
+              <p className="meta text-sand">
+                Capítulo {meta.numeral} · {meta.subject}
+                {settings.physicsMode === 'merged' && ' · Anexo de Matemáticas'}
+              </p>
+              <h1 className="display-hero mt-6">
+                Vectores <span className="block italic text-sand">en La Guajira</span>
+              </h1>
+              <p className="mt-8 max-w-[42ch] text-lg leading-relaxed text-ivory/80">{physics.intro}</p>
+              <p className="meta mt-8 text-ivory/50">
+                5 días · {totalKm} km · {physics.authors.join(' · ')}
+              </p>
+            </div>
+            <p className="meta absolute bottom-6 left-1/2 -translate-x-1/2 text-ivory/45">Desliza para iniciar el recorrido ↓</p>
+          </section>
+        )}
       </div>
     </div>
   );
@@ -224,43 +314,9 @@ function Journey({ goToRef }: { goToRef: MutableRefObject<(i: number) => void> }
 
 export default function PhysicsPage() {
   const goToRef = useRef<(i: number) => void>(() => undefined);
-  const goTo = (i: number) => goToRef.current(i);
-  const totalKm = DAYS.reduce((s, d) => s + d.total.km, 0);
 
   return (
     <div lang="es" className="bg-[#0b1d27] text-ivory">
-      {/* Opening */}
-      <section className="gutter relative flex min-h-[86svh] flex-col justify-end overflow-hidden pb-14 pt-32">
-        <div className="absolute inset-0 opacity-40" style={{ backgroundImage: 'linear-gradient(rgba(244,237,226,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(244,237,226,.06) 1px, transparent 1px)', backgroundSize: '64px 64px' }} aria-hidden />
-        <div className="relative">
-          <p className="meta text-sand">
-            Capítulo {meta.numeral} · {meta.subject}
-            {settings.physicsMode === 'merged' && ' · Anexo de Matemáticas'} · El viaje en movimiento
-          </p>
-          <h1 className="display-hero mt-6">
-            Vectores <span className="italic text-sand">en La Guajira</span>
-          </h1>
-          <p className="mt-8 max-w-[46ch] text-lg leading-relaxed text-ivory/75">{physics.intro}</p>
-          <p className="meta mt-6 text-ivory/45">{physics.authors.join(' · ')}</p>
-        </div>
-        <ol className="relative mt-14 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-ivory/15 pt-6 sm:grid-cols-3 md:grid-cols-6">
-          {DAYS.map((d, i) => (
-            <li key={d.n}>
-              <button onClick={() => goTo(i)} className="group text-left">
-                <span className="meta text-sand">Día {d.n}</span>
-                <span className="mt-1 block font-display text-2xl transition-colors group-hover:text-sand">{d.total.km} km</span>
-                <span className="block text-xs text-ivory/50">{d.lead}</span>
-              </button>
-            </li>
-          ))}
-          <li className="col-span-2 sm:col-span-1">
-            <span className="meta text-ivory/45">Total</span>
-            <span className="mt-1 block font-display text-2xl">{totalKm} km</span>
-            <span className="block text-xs text-ivory/50">Cinco días</span>
-          </li>
-        </ol>
-      </section>
-
       <Journey goToRef={goToRef} />
 
       {/* Route vs vector — the key distinction */}

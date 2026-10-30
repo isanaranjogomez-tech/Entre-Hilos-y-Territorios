@@ -131,6 +131,37 @@ export const science = {
     alt: 'Scientific poster “Coastal Lagoons, Fishing & Water Quality” about Los Flamencos Sanctuary, Camarones, La Guajira.',
   } as DocumentAsset,
 
+  /**
+   * Condensed wording for the interactive chapter. Every line summarises the
+   * poster above (same facts, citations and limits); nothing is added. The
+   * complete poster stays in Resources.
+   */
+  summary: {
+    objective: 'How water availability and quality connect biodiversity, fishing and local customs in Los Flamencos Sanctuary.',
+    approach: 'Field notes from our visit, checked against trustworthy documentary sources.',
+    place: 'In Camarones, the sanctuary protects coastal lagoons such as Navío Quebrado and Laguna Grande.',
+    placeLink: 'Their waters shelter fish, crustaceans and waterbirds — and sustain local fishing and guiding.',
+    methods: [
+      { label: 'Field research', text: 'Notes on lagoons, mangroves, dry forest, flamingo habits and water depth.' },
+      { label: 'Documentation', text: 'Daza-Daza et al. (2018), the sanctuary’s website and video, and chemistry sources on polarity and density.' },
+      { label: 'Analysis', text: 'A model linking water properties, biodiversity and local fishing.' },
+    ],
+    web: ['Water quality', 'Lagoon habitat', 'Fish & crustaceans', 'Waterbirds', 'Local fishing'],
+    challenge: 'If habitat or water quality degrades, lagoon food chains — and fishing — can be disrupted. Fuel entering the water is one possible source of pollution. (NOAA, n.d.)',
+    chemistry: 'Water is polar; fuels are mainly non-polar hydrocarbons, so the two do not mix. Being less dense, fuel stays on top.',
+    ideas: [
+      { title: 'A shared base', text: 'Lagoon water is habitat for fish and crustaceans, which link to birds and fishing.' },
+      { title: 'A floating risk', text: 'Because fuel floats on water, a hypothetical film could expose species to toxic substances.' },
+      { title: 'Culture adapts', text: 'Wayuu water traditions adapt to changing water availability — not every community in the same way. (Daza-Daza et al., 2018)' },
+    ],
+    limits: 'No site-specific chemical analyses or confirmed spills: a conservation model, not a laboratory result.',
+    actions: ['Safe fuel handling away from lagoon margins.', 'No waste released; accidental spills reported quickly.', 'Park guidance combined with community knowledge of sensitive habitats.'],
+    benefit: 'Healthier water, wildlife and fishing livelihoods.',
+    limit: 'It needs participation, resources, training and consultation.',
+    conclusion: 'Conserving the lagoon waters supports both its organisms and the well-being of local people.',
+    conclusionNote: 'Community decisions are also shaped by culture, environmental knowledge and conservation rules.',
+  },
+
   /** Section 9 · References (APA 7), verbatim. */
   references: [
     { label: 'Daza-Daza, A. R., Rodríguez-Valencia, N., & Carabalí-Angola, A. (2018). El recurso agua en las comunidades indígenas Wayuu de La Guajira colombiana. Parte 1: Una mirada desde los saberes y prácticas ancestrales. Información Tecnológica, 29(6), 13–24.', url: 'https://doi.org/10.4067/S0718-07642018000600013', provenance: 'Poster · References (APA 7)' },

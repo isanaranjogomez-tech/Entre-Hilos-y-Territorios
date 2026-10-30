@@ -34,7 +34,7 @@ function PosterLoop() {
       preload="metadata"
       aria-hidden
       tabIndex={-1}
-      className="absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-[6px] [filter:sepia(.45)_saturate(1.1)_contrast(1.1)_blur(6px)]"
+      className="absolute inset-0 h-full w-full object-cover opacity-70 [filter:sepia(.18)_saturate(1.05)_contrast(1.05)]"
     />
   );
 }
@@ -53,36 +53,27 @@ export default function EnglishPage() {
 
   return (
     <div lang="en" className="bg-[#0e0b09] text-ivory">
-      {/* Poster */}
-      <section className="relative flex min-h-[74svh] flex-col justify-between gap-10 overflow-hidden pb-10 pt-28">
+      {/* Poster — the whole first screen */}
+      <section className="relative h-[100svh] overflow-hidden">
         <PosterLoop />
-        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 40%, rgba(14,11,9,.2) 0%, rgba(14,11,9,.85) 75%), linear-gradient(to bottom, rgba(14,11,9,.4), #0e0b09)' }} />
-        <p className="meta gutter relative text-center text-sand/80">
-          {project.institution} · {meta.subject} · 2026
-        </p>
-        <div className="gutter relative text-center">
-          <h1 className="display-hero">
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(14,11,9,.55) 0%, rgba(14,11,9,.05) 30%, rgba(14,11,9,.2) 55%, rgba(14,11,9,.92) 88%, #0e0b09 100%)' }} />
+        <div className="gutter relative flex h-full flex-col justify-end pb-[max(3rem,7svh)] pt-[var(--nav-h)] text-center">
+          <p className="meta text-sand/85">
+            {project.institution} · {meta.subject} · 2026
+          </p>
+          <h1 className="display-hero mt-5 [text-shadow:0_4px_40px_rgba(0,0,0,.55)]">
             Voices <span className="italic text-sand">of</span> La Guajira
           </h1>
-          <p className="mx-auto mt-8 max-w-[40ch] font-display text-xl italic text-ivory/75 md:text-2xl">{english.title}</p>
+          <p className="mx-auto mt-5 max-w-[40ch] font-display text-xl italic text-ivory/85 md:text-2xl">{english.title}</p>
+          <p className="meta mt-6 text-ivory/55">
+            Role-play interview · English · {english.video.durationLabel} · Language Arts
+          </p>
+          <p className="meta mt-8 text-ivory/40">Scroll to the screening ↓</p>
         </div>
-        <dl className="gutter relative mx-auto grid max-w-4xl grid-cols-2 gap-x-10 gap-y-4 text-center md:grid-cols-4">
-          {[
-            ['Format', 'Role-play interview'],
-            ['Language', 'English'],
-            ['Running time', english.video.durationLabel],
-            ['Course', 'Language Arts'],
-          ].map(([k, v]) => (
-            <div key={k}>
-              <dt className="meta text-ivory/40">{k}</dt>
-              <dd className="mt-1 font-display text-lg">{v}</dd>
-            </div>
-          ))}
-        </dl>
       </section>
 
       {/* Screening */}
-      <section aria-label="Interview" className="pb-14 pt-4 md:pb-20">
+      <section aria-label="Interview" className="pb-14 pt-16 md:pb-20 md:pt-20">
         <div className="mx-auto max-w-[1600px] md:px-[var(--gutter)]">
           <VideoPlayer ref={player} src={asset(english.video.src)} captions={asset(english.video.captions)} poster={english.video.poster ? asset(english.video.poster) : null} title={english.title} captionsOn={!english.video.burnedInSubtitles} onTime={setTime} onCues={onCues} />
         </div>

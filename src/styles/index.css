@@ -299,3 +299,20 @@
     transform: translate(-60px, -40px);
   }
 }
+
+/* Physics · cover route drawing */
+.ph-draw {
+  stroke-dasharray: 1 1;
+  animation: ph-draw 3.2s cubic-bezier(0.45, 0, 0.2, 1) 0.3s both;
+}
+@keyframes ph-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.ph-fade {
+  animation: page-fade-in 1s ease 3.2s both;
+}

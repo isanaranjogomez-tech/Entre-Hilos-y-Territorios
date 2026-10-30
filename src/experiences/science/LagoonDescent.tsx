@@ -72,12 +72,9 @@ const beats: Beat[] = [
     depth: 'Surface',
     content: (
       <>
-        <p className="meta text-[#13807e]">Objective & case focus</p>
-        <div className="mt-5 space-y-4 font-display text-[clamp(1.3rem,1.9vw,1.75rem)] leading-snug">
-          {science.objective.map((o) => (
-            <p key={o}>{o}</p>
-          ))}
-        </div>
+        <p className="meta text-[#13807e]">Objective</p>
+        <p className="mt-5 font-display text-[clamp(1.5rem,2.2vw,2.1rem)] leading-snug">{science.summary.objective}</p>
+        <p className="mt-4 text-[1.02rem] leading-relaxed opacity-75">{science.summary.approach}</p>
         <p className="meta mt-6 opacity-55">
           {science.authors.join(' · ')} — {science.affiliation}
         </p>
@@ -93,8 +90,9 @@ const beats: Beat[] = [
     depth: 'Shoreline',
     content: (
       <>
-        <p className="meta text-[#13807e]">The place</p>
-        <p className="mt-5 text-[1.12rem] leading-relaxed">{science.place}</p>
+        <p className="meta text-[#13807e]">Los Flamencos Sanctuary</p>
+        <p className="mt-5 font-display text-[clamp(1.45rem,2.1vw,2rem)] leading-snug">{science.summary.place}</p>
+        <p className="mt-4 text-[1.05rem] leading-relaxed opacity-80">{science.summary.placeLink}</p>
         <div className="mt-7">
           <Print p={science.photos[1]} tilt={1.2} />
         </div>
@@ -105,19 +103,39 @@ const beats: Beat[] = [
   { id: 'water', tone: 'deep', depth: 'Waterline', content: <HabitatBeat r={row('Lagoon water')} n={2} /> },
   { id: 'fish', tone: 'deep', depth: 'Water column', content: <HabitatBeat r={row('Fish')} n={3} /> },
   {
+    id: 'web',
+    tone: 'deep',
+    depth: 'Water column',
+    content: (
+      <>
+        <p className="meta text-[#8fd0cd]">How the lagoon connects</p>
+        <ol data-web className="mt-6 space-y-0">
+          {science.summary.web.map((w, i) => (
+            <li key={w} data-web-node className="relative grid grid-cols-[1.6rem_1fr] items-center pb-5 last:pb-0">
+              <span className="relative z-10 h-3 w-3 rounded-full border-2 border-[#8fd0cd] bg-[#0b2632]" />
+              {i < science.summary.web.length - 1 && <span data-web-link className="absolute left-[5px] top-3 h-full w-[2px] origin-top bg-[#8fd0cd]/60" />}
+              <span className={`font-display leading-tight ${i === science.summary.web.length - 1 ? 'text-[1.7rem] text-sand' : 'text-[1.55rem]'}`}>{w}</span>
+            </li>
+          ))}
+        </ol>
+        <p className="mt-6 font-mono text-[0.6rem] uppercase tracking-[0.14em] opacity-60">Relationships from the poster’s model · illustration, not observations</p>
+      </>
+    ),
+  },
+  {
     id: 'methods',
     tone: 'deep',
     depth: 'Lagoon floor',
     content: (
       <>
         <p className="meta text-[#8fd0cd]">Methods & sources</p>
-        <ol className="mt-5 space-y-5">
-          {science.methods.map((m, i) => (
+        <ol className="mt-5 space-y-4">
+          {science.summary.methods.map((m, i) => (
             <li key={m.label} className="grid grid-cols-[2rem_1fr]">
-              <span className="font-mono text-xs text-[#8fd0cd]">0{i + 1}</span>
+              <span className="pt-1.5 font-mono text-xs text-[#8fd0cd]">0{i + 1}</span>
               <div>
                 <h3 className="font-display text-2xl leading-tight">{m.label}</h3>
-                <p className="mt-1.5 text-[0.98rem] leading-relaxed opacity-80">{m.text}</p>
+                <p className="mt-1 text-[1rem] leading-relaxed opacity-80">{m.text}</p>
               </div>
             </li>
           ))}
@@ -132,7 +150,7 @@ const beats: Beat[] = [
     content: (
       <>
         <p className="meta text-gold">Conservation challenge</p>
-        <p className="mt-5 font-display text-[clamp(1.35rem,2vw,1.85rem)] leading-snug">{science.challenge}</p>
+        <p className="mt-5 font-display text-[clamp(1.35rem,2vw,1.85rem)] leading-snug">{science.summary.challenge}</p>
         <p className="mt-6 font-mono text-[0.62rem] uppercase leading-relaxed tracking-[0.14em] text-gold/80">Hypothetical film shown above · conceptual, not observed in the lagoon</p>
       </>
     ),
@@ -176,11 +194,12 @@ const T = {
   birds: [5.3, 6.9],
   water: [7.5, 9.1],
   fish: [9.8, 11.4],
-  methods: [12.1, 13.9],
-  film: [14.6, 16.3],
-  model: [17.4, 19],
+  web: [11.6, 13.4],
+  methods: [14.1, 15.9],
+  film: [16.6, 18.3],
+  model: [19.4, 21],
 } as const;
-const END = 19;
+const END = 21;
 
 /**
  * /ciencias · the descent. A sticky stage holds the illustrated lagoon; the
@@ -231,16 +250,20 @@ function AnimatedLagoon({ desktop }: { desktop: boolean }) {
       tl.fromTo(world, { yPercent: cam(surface[0]), scale: 1.12 }, { yPercent: cam(surface[1]), scale: 1, duration: 6.5, ease: 'power1.out' }, 0)
         .to(world, { yPercent: cam(0.5), duration: 1.3, ease: 'power2.inOut' }, 6.9)
         .to(world, { yPercent: cam(1.55), duration: 1.4, ease: 'power2.inOut' }, 9.1)
-        .to(world, { yPercent: cam(2), duration: 1.3, ease: 'power2.inOut' }, 11.4)
-        .to(world, { yPercent: cam(0.78), duration: 1.6, ease: 'power2.inOut' }, 13.9)
-        .fromTo(q('[data-film]'), { opacity: 0, scaleX: 0 }, { opacity: 1, scaleX: 1, svgOrigin: '0 900', duration: 1.4, ease: 'power1.inOut' }, 14.7)
+        .to(world, { yPercent: cam(1.7), duration: 1.2, ease: 'power2.inOut' }, 11.4)
+        .to(world, { yPercent: cam(2), duration: 1.3, ease: 'power2.inOut' }, 13.4)
+        .to(world, { yPercent: cam(0.78), duration: 1.6, ease: 'power2.inOut' }, 15.9)
+        .fromTo(q('[data-film]'), { opacity: 0, scaleX: 0 }, { opacity: 1, scaleX: 1, svgOrigin: '0 900', duration: 1.4, ease: 'power1.inOut' }, 16.7)
+        // The chain draws node by node while its beat is on screen.
+        .fromTo(q('[data-web-node]'), { opacity: 0, x: -14 }, { opacity: 1, x: 0, stagger: 0.22, duration: 0.4, ease: 'power2.out' }, 11.9)
+        .fromTo(q('[data-web-link]'), { scaleY: 0 }, { scaleY: 1, stagger: 0.22, duration: 0.3 }, 12.05)
         .to(q('[data-flock]'), { xPercent: desktop ? -55 : -35, yPercent: 25, duration: 7 }, 0)
         .to(q('[data-reeds]'), { yPercent: 70, autoAlpha: 0, duration: 1.3, ease: 'power2.in' }, 6.9)
         .to(q('[data-flock]'), { autoAlpha: 0, duration: 0.8 }, 7.2)
         .to(q('[data-credit]'), { color: 'rgba(244,237,226,.45)', duration: 0.6 }, 7.4)
         // The frame narrows into the vessel of the conceptual model.
-        .to(q('[data-frame]'), { clipPath: desktop ? 'inset(20.5% 64% 8% 12% round 0px 0px 28px 28px)' : 'inset(20.5% 26% 40% 26% round 0px 0px 22px 22px)', duration: 1.6, ease: 'power2.inOut' }, 16.4)
-        .to(q('[data-credit]'), { autoAlpha: 0, duration: 0.4 }, 16.4)
+        .to(q('[data-frame]'), { clipPath: desktop ? 'inset(20.5% 64% 8% 12% round 0px 0px 28px 28px)' : 'inset(20.5% 26% 40% 26% round 0px 0px 22px 22px)', duration: 1.6, ease: 'power2.inOut' }, 18.4)
+        .to(q('[data-credit]'), { autoAlpha: 0, duration: 0.4 }, 18.4)
         .to({}, { duration: 0 }, END);
 
       // Title arrives on load.

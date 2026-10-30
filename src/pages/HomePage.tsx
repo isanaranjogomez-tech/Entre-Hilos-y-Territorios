@@ -1,4 +1,4 @@
-import { Suspense, lazy, useRef, useState, type ReactNode } from 'react';
+import { Suspense, lazy, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { project, visibleChapters } from '@/content/project';
 import type { ChapterId, ChapterMeta } from '@/content/types';
@@ -53,35 +53,41 @@ const visualFor: Record<ChapterId, (hovered: boolean) => ReactNode> = {
   'lenguaje-sociales': () => <BookVisual />,
 };
 
-/** Asymmetric placement in the 12-column index: varied scale, crop and rhythm. */
-const placement: Record<ChapterId, { wrap: string; frame: string }> = {
-  matematicas: { wrap: 'md:col-span-7', frame: 'aspect-[4/5] md:aspect-[5/6]' },
-  ciencias: { wrap: 'md:col-span-5 md:col-start-8 md:mt-40', frame: 'aspect-[4/3]' },
-  fisica: { wrap: 'md:col-span-5 md:col-start-1 md:-mt-6', frame: 'aspect-[1055/1148]' },
-  ingles: { wrap: 'md:col-span-7 md:col-start-6 md:mt-28', frame: 'aspect-video' },
-  'lenguaje-sociales': { wrap: 'md:col-span-6 md:col-start-2 md:mt-4', frame: 'aspect-[16/10]' },
+/**
+ * Catalogue spread: three plates over two, centred. Every plate has the same
+ * width and the same 4:3 image area, so titles align on one line; each
+ * subject keeps its own image and accent colour.
+ */
+const accent: Record<ChapterId, string> = {
+  matematicas: '#e88aac',
+  ciencias: '#7fd1cc',
+  fisica: '#d6a874',
+  ingles: '#e3c34b',
+  'lenguaje-sociales': '#f0b9a0',
+};
+const placement: Record<ChapterId, string> = {
+  matematicas: 'lg:col-span-2',
+  ciencias: 'lg:col-span-2',
+  fisica: 'lg:col-span-2',
+  ingles: 'lg:col-span-2 lg:col-start-2',
+  'lenguaje-sociales': 'lg:col-span-2',
 };
 
 function IndexEntry({ c }: { c: ChapterMeta }) {
   const [hovered, setHovered] = useState(false);
-  const p = placement[c.id];
   return (
-    <li className={p.wrap} lang={c.lang}>
+    <li className={placement[c.id]} lang={c.lang} style={{ '--accent': accent[c.id] } as CSSProperties}>
       <Link to={c.path} className="group block" onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} onFocus={() => setHovered(true)} onBlur={() => setHovered(false)}>
-        <div className={`relative overflow-hidden ${p.frame}`}>
-          <div className="absolute inset-0 transition-transform duration-[1.4s] ease-[cubic-bezier(.2,.7,.2,1)] group-hover:scale-[1.035]">{visualFor[c.id](hovered)}</div>
+        <div className="relative aspect-[4/3] overflow-hidden bg-[#0b1d27]">
+          <div className="absolute inset-0 transition-transform duration-[1.4s] ease-[cubic-bezier(.2,.7,.2,1)] group-hover:scale-[1.03]">{visualFor[c.id](hovered)}</div>
         </div>
-        <div className="mt-6 grid grid-cols-[auto_1fr] items-baseline gap-x-5">
-          <span className="font-display text-4xl italic text-sand/80">{c.numeral}</span>
+        <div className="mt-5 grid grid-cols-[2.4rem_1fr] gap-x-3">
+          <span className="font-display text-3xl italic leading-none text-[var(--accent)]">{c.numeral}</span>
           <div>
-            <p className="meta text-ivory/50">
-              {c.subject} · {c.product}
-            </p>
-            <h3 className="mt-2 font-display text-[clamp(1.9rem,3.2vw,3.2rem)] leading-[0.98] transition-colors duration-500 group-hover:text-sand">{c.title}</h3>
-            <p className="mt-3 max-w-[46ch] leading-relaxed text-ivory/60">{c.description}</p>
-            <span className="mt-5 inline-flex items-center gap-3 rounded-full border border-ivory/25 px-5 py-2.5 font-mono text-[0.66rem] uppercase tracking-[0.18em] text-ivory transition-colors group-hover:border-sand group-hover:text-sand">
-              {c.lang === 'en' ? 'Enter chapter' : 'Entrar al capítulo'} <span className="transition-transform duration-500 group-hover:translate-x-1">→</span>
-            </span>
+            <p className="meta text-ivory/50">{c.subject}</p>
+            <h3 className="mt-2 font-display text-[clamp(1.6rem,2.2vw,2.15rem)] leading-[1.02] transition-colors duration-500 group-hover:text-[var(--accent)]">{c.title}</h3>
+            <p className="mt-2 text-[0.95rem] leading-relaxed text-ivory/60">{c.product}</p>
+            <span className="meta mt-4 inline-block text-[var(--accent)] opacity-80 transition-opacity group-hover:opacity-100">{c.lang === 'en' ? 'Enter' : 'Entrar'} →</span>
           </div>
         </div>
       </Link>
@@ -123,7 +129,7 @@ export default function HomePage() {
             Ir a los capítulos
           </a>
           {/* Title */}
-          <div data-title className="gutter flex h-[100svh] flex-col justify-center pb-36 pt-[var(--nav-h)] md:pb-28">
+          <div data-title className="gutter flex h-[100svh] flex-col justify-center pb-36 pt-[var(--nav-h)] md:pb-28 lg:pb-10">
             <p data-fade className="meta text-sand">
               {project.program} · {project.institution}
             </p>
@@ -145,7 +151,7 @@ export default function HomePage() {
           </div>
 
           {/* The five rooms, reachable from the first screen */}
-          <nav aria-label="Capítulos" className="gutter absolute inset-x-0 top-[calc(100svh-7.5rem)] md:top-[calc(100svh-7rem)]">
+          <nav aria-label="Capítulos" className="gutter absolute inset-x-0 top-[calc(100svh-7.5rem)] md:top-[calc(100svh-7rem)] lg:hidden">
             <ol data-fade className="-mx-[var(--gutter)] flex snap-x gap-6 overflow-x-auto border-t border-ivory/20 px-[var(--gutter)] pb-2 pt-4 [scrollbar-width:none] md:mx-0 md:grid md:grid-cols-5 md:overflow-visible md:px-0">
               {visibleChapters.map((c) => (
                 <li key={c.id} lang={c.lang} className="min-w-[10.5rem] snap-start md:min-w-0">
@@ -190,7 +196,7 @@ export default function HomePage() {
           </h2>
           <p className="max-w-[36ch] text-ivory/55">Cada disciplina es una sala de la exposición, con su propio lenguaje. Entra en el orden que prefieras.</p>
         </div>
-        <ol className="grid gap-x-10 gap-y-16 md:grid-cols-12 md:gap-y-16">
+        <ol className="grid gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-6 lg:gap-x-10 lg:gap-y-16">
           {visibleChapters.map((c) => (
             <IndexEntry key={c.id} c={c} />
           ))}

@@ -273,6 +273,51 @@ export const essay = {
   ] as string[] | null,
   ibConcepts: null as string[] | null,
   /** Original file for download. */
+  /**
+   * Curated pages for the interactive book. Every line is the essay's own
+   * wording (excerpts; "…" marks a cut sentence). The complete text is in the
+   * reading mode.
+   */
+  book: {
+    intro: [
+      'La relación entre una comunidad y su territorio nunca es casual.',
+      'Habitan un territorio extremo, marcado por la aridez, la escasez de agua y un paisaje que exige constante adaptación.',
+      '… la cultura wayuu no se construyó al margen del ambiente, sino a partir de él.',
+    ],
+    arguments: [
+      {
+        idea: 'La diversidad ambiental de La Guajira genera prácticas y representaciones culturales distintas en cada subregión.',
+        evidence: [
+          { label: 'Alta Guajira', text: 'Esta realidad obliga a las comunidades wayuu a vivir de una manera similar a la nómada.' },
+          { label: 'Media Guajira', text: '… se mantiene el pastoreo, pero aparece más la agricultura como fuente de ingresos.' },
+          { label: 'Baja Guajira', text: 'Existen lagunas, salinas y mayor influencia del mar.' },
+        ],
+        sources: ['Romero López y Muñoz, 2019', 'Consejos Comunitarios de Comunidades Negras El Negro Robles, Afrodescendientes de Camarones y Afrodescendientes El Rosario, 2023'],
+        pull: '… distintas condiciones ambientales generan distintas formas de relacionarse con la naturaleza.',
+      },
+      {
+        idea: 'Una de las representaciones culturales más claras de la relación entre sociedad y naturaleza es el tejido de las mochilas (susu).',
+        evidence: [
+          { label: 'Origen', text: 'Según la tradición wayuu, fue Wale’keru, la araña, quien enseñó a las mujeres a tejer.' },
+          { label: 'Kanas', text: 'Los diseños geométricos llamados kanas no son simples adornos.' },
+          { label: 'Salida de campo', text: 'En la salida de campo, Yusandi explico que a través de estos patrones, las tejedoras expresan su cosmovisión y su forma de entender el mundo que las rodea.' },
+        ],
+        sources: ['Romero López y Muñoz, 2019'],
+        pull: 'La mochila no solo sirve para cargar objetos; se convierte en un objeto que porta memoria, identidad y una forma particular de relacionarse con el territorio.',
+      },
+      {
+        idea: 'Tanto en las comunidades wayuu como en las negras de Camarones, la oferta ambiental ha generado formas propias de entender y manejar el territorio.',
+        evidence: [
+          { label: 'Wayuu', text: 'Para los wayuu, el agua es el origen de los clanes.' },
+          { label: 'Camarones', text: 'La pesca artesanal, la recolección de cachira, la extracción de ostras y jaibas, y la extracción de sal no son solo actividades económicas: forman parte de su identidad cultural …' },
+        ],
+        sources: ['Romero López y Muñoz, 2019', 'Consejos Comunitarios de Comunidades Negras El Negro Robles, Afrodescendientes de Camarones y Afrodescendientes El Rosario, 2023'],
+        pull: 'Esta visión surge directamente de la necesidad de vivir en un entorno extremo, donde el agua es escasa …',
+      },
+    ],
+    conclusion: 'En conclusión la oferta ambiental de La Guajira determina de manera clara las interacciones entre sociedad y naturaleza, así como las distintas representaciones culturales de sus pueblos.',
+  },
+
   file: 'documents/ensayo-guajira-entrega-final.docx' as string | null,
   /** Resources proposed by the school (not necessarily the ones chosen). */
   proposedResources: [

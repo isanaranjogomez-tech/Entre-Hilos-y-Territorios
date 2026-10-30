@@ -7,7 +7,6 @@ dist
 
 # Withheld from the public repository until authorization is confirmed
 # (see src/content/publication.ts). The files stay in the local project.
-public/images/ensayo/
 public/documents/ensayo-guajira-entrega-final.docx
 # Internal school document, not a public deliverable.
 public/documents/hoja-de-ruta-2026.png

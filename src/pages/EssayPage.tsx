@@ -4,7 +4,8 @@ import { chapterById, project } from '@/content/project';
 import { essay, type Figure } from '@/content/essay';
 import { PendingSlot } from '@/components/editorial/PendingSlot';
 import { ResourceShelf } from '@/components/resources/ResourceShelf';
-import { EssayBook, EssayFigure } from '@/experiences/essay/EssayBook';
+import { EssayFigure } from '@/experiences/essay/EssayBook';
+import { FlipBook } from '@/experiences/essay/FlipBook';
 import { SourceList } from '@/components/editorial/SourceList';
 import { asset } from '@/lib/asset';
 import { isAvailable } from '@/content/publication';
@@ -113,7 +114,7 @@ export default function EssayPage() {
           El atlas <span className="italic text-magenta">de los</span> argumentos
         </h1>
         <div className="grid gap-8 border-t border-navy/20 pt-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto] md:items-end">
-          <p className="max-w-[36ch] leading-relaxed text-navy/70">Un libro de investigación: introducción, tesis, el marco ambiental y social, tres argumentos con sus fuentes, conclusión y bibliografía.</p>
+          <p className="max-w-[36ch] leading-relaxed text-navy/70">Las ideas centrales del ensayo en un libro que se hojea. El texto completo, con citas y bibliografía, está en el modo de lectura.</p>
           <p className="font-display text-xl italic leading-snug text-navy/60">{essay.title ?? 'Título del ensayo — pendiente de integración'}</p>
           <button onClick={() => setReading(true)} className="btn-pill w-fit border-navy/30 hover:border-navy">
             Leer ensayo completo
@@ -121,7 +122,7 @@ export default function EssayPage() {
         </div>
       </section>
 
-      <EssayBook />
+      <FlipBook onRead={() => setReading(true)} />
 
       <ResourceShelf
         lang="es"

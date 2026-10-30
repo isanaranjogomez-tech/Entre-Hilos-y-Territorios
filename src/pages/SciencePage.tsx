@@ -9,9 +9,6 @@ import { useGsap } from '@/hooks/useGsap';
 import { gsap } from '@/lib/gsap';
 import { asset } from '@/lib/asset';
 
-/** Splits a verbatim paragraph into its sentences (citations stay attached). */
-const sentences = (text: string) => text.split(/(?<=\.)\s+(?=[A-Z])/);
-
 /**
  * /ciencias — "Beneath the lagoon". English, like the poster. A scroll-driven
  * descent through the illustrated lagoon (habitat, methods, the conservation
@@ -31,87 +28,82 @@ export default function SciencePage() {
     });
   }, root);
 
+  const sm = science.summary;
   const [consTitle, consSub] = science.conservation.heading.split('—').map((s) => s.trim());
 
   return (
     <div ref={root} lang="en" className="bg-[#f4f1ea] text-navy">
       <LagoonDescent />
 
-      {/* The conceptual model: chemistry → interactive vessel */}
-      <section aria-labelledby="chem-title" className="gutter pb-20 pt-10 md:pb-24">
-        <div className="grid gap-8 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)] md:gap-16">
-          <div>
-            <p className="meta text-[#13807e]">The invisible chemistry</p>
-            <h2 id="chem-title" className="display-lg mt-3">
-              Chemistry: Polarity + Density
-            </h2>
-          </div>
-          <p data-reveal className="text-[1.12rem] leading-relaxed text-navy/85 md:pt-2">
-            {sentences(science.chemistry).map((s) => (
-              <span key={s} className="inline">
-                {s}{' '}
-              </span>
-            ))}
-          </p>
+      {/* The conceptual model: one sentence, then the simulator */}
+      <section aria-labelledby="chem-title" className="gutter pb-16 pt-8 md:pb-20">
+        <div className="max-w-3xl">
+          <p className="meta text-[#13807e]">Polarity + density</p>
+          <h2 id="chem-title" className="display-lg mt-3">
+            Why fuel floats
+          </h2>
+          <p className="mt-4 max-w-[52ch] text-[1.15rem] leading-relaxed text-navy/80">{sm.chemistry}</p>
         </div>
-        <div className="mt-14">
+        <div className="mt-10">
           <LayerVessel />
         </div>
-        <p className="mt-8 max-w-[70ch] text-sm leading-relaxed text-navy/60">{science.modelCaption} The interactive version on this page follows the same conceptual diagram.</p>
+        <p className="mt-6 text-sm text-navy/55">{science.modelCaption}</p>
       </section>
 
-      {/* Discussion: read in two measured columns */}
-      <section aria-labelledby="disc-title" className="gutter border-t border-navy/10 py-20 md:py-24">
-        <div className="grid gap-8 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)] md:gap-16">
-          <h2 id="disc-title" className="meta pt-2 text-[#13807e]">
-            Discussion & integrated analysis
-          </h2>
-          <div data-reveal className="space-y-6">
-            {sentences(science.discussion).map((s) => (
-              <p key={s} className="text-[1.12rem] leading-relaxed">
-                {s}
-              </p>
-            ))}
-            <p className="bg-[#ebe4d6] px-5 py-4 text-[1.02rem] leading-relaxed text-navy/85">{science.limitations}</p>
-          </div>
-        </div>
-      </section>
-
-      {/* Conservation proposal, at dusk */}
-      <section aria-labelledby="cons-title" className="relative overflow-hidden text-ivory">
+      {/* What it means: three ideas at dusk, then the plan */}
+      <section aria-labelledby="ideas-title" className="relative overflow-hidden text-ivory">
         <LagoonScene mood="dusk" className="absolute inset-0 h-full w-full" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0e2a36]/92 via-[#0e2a36]/72 to-[#0e2a36]/30" />
-        <div className="gutter relative py-20 md:py-28">
-          <p className="meta text-sand">Conservation proposal</p>
-          <h2 id="cons-title" className="display-lg mt-3 max-w-[16ch]">
-            {consTitle}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0e2a36]/90 via-[#0e2a36]/78 to-[#0e2a36]/92" />
+        <div className="gutter relative py-20 md:py-24">
+          <h2 id="ideas-title" className="meta text-sand">
+            What the model suggests
           </h2>
-          <p className="mt-3 font-display text-xl italic text-ivory/75">— {consSub}</p>
-          <ol data-reveal className="mt-10 max-w-3xl space-y-5">
-            {science.conservation.actions.map((a, i) => (
-              <li key={a} className="grid grid-cols-[2.5rem_1fr] text-[1.15rem] leading-snug">
-                <span className="pt-1 font-mono text-xs text-sand">0{i + 1}</span>
-                {a}
+          <ol data-reveal className="mt-8 grid gap-8 md:grid-cols-3 md:gap-10">
+            {sm.ideas.map((idea, i) => (
+              <li key={idea.title}>
+                <span className="font-mono text-xs text-sand">0{i + 1}</span>
+                <h3 className="mt-2 font-display text-[1.9rem] leading-tight">{idea.title}</h3>
+                <p className="mt-2 text-[1.05rem] leading-relaxed text-ivory/80">{idea.text}</p>
               </li>
             ))}
           </ol>
-          <div data-reveal className="mt-10 max-w-3xl">
-            <p className="font-display text-2xl leading-snug">{science.conservation.benefit}</p>
-            <p className="mt-3 text-ivory/70">{science.conservation.limit}</p>
+          <p className="mt-10 max-w-2xl border-l-2 border-gold/70 pl-4 text-sm leading-relaxed text-ivory/75">{sm.limits}</p>
+
+          <div className="mt-20 grid gap-10 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.3fr)] md:gap-16">
+            <div>
+              <p className="meta text-sand">Conservation proposal</p>
+              <h2 className="display-md mt-3 max-w-[14ch]">{consTitle}</h2>
+              <p className="mt-2 font-display text-lg italic text-ivory/70">— {consSub}</p>
+            </div>
+            <div>
+              <ol data-reveal className="space-y-4">
+                {sm.actions.map((a, i) => (
+                  <li key={a} className="grid grid-cols-[2.2rem_1fr] text-[1.15rem] leading-snug">
+                    <span className="pt-1 font-mono text-xs text-sand">0{i + 1}</span>
+                    {a}
+                  </li>
+                ))}
+              </ol>
+              <p className="mt-8 font-display text-2xl leading-snug">{sm.benefit}</p>
+              <p className="mt-1 text-ivory/65">{sm.limit}</p>
+            </div>
           </div>
-          <p className="mt-10 font-mono text-[0.55rem] uppercase tracking-[0.16em] text-ivory/40">Background: illustrated lagoon, not a photograph</p>
+          <p className="mt-12 font-mono text-[0.55rem] uppercase tracking-[0.16em] text-ivory/40">Background: illustrated lagoon, not a photograph</p>
         </div>
       </section>
 
-      {/* Conclusion */}
-      <section aria-labelledby="concl-title" className="gutter py-20 md:py-28">
-        <h2 id="concl-title" className="meta text-[#13807e]">
-          Conclusion
-        </h2>
-        <div data-reveal className="mt-6 max-w-[40ch] space-y-4 font-display text-[clamp(1.6rem,2.8vw,2.6rem)] leading-[1.15]">
-          {sentences(science.conclusion).map((s) => (
-            <p key={s}>{s}</p>
-          ))}
+      {/* Conclusion beside a field photograph */}
+      <section aria-labelledby="concl-title" className="gutter grid items-center gap-10 py-20 md:grid-cols-[auto_minmax(0,1fr)] md:gap-16 md:py-24">
+        <figure className="w-[min(320px,100%)] rotate-[-1deg] bg-[#fbf8f1] p-2 pb-3 shadow-[0_24px_50px_-24px_rgba(11,34,48,.45)]">
+          <img src={asset(science.photos[1].src)} alt={science.photos[1].alt} width={253} height={112} loading="lazy" className="w-full" />
+          <figcaption className="mt-2 text-[0.7rem] leading-snug text-navy/70">{science.photos[1].caption}</figcaption>
+        </figure>
+        <div>
+          <h2 id="concl-title" className="meta text-[#13807e]">
+            Conclusion
+          </h2>
+          <p className="mt-4 max-w-[30ch] font-display text-[clamp(1.8rem,3vw,2.8rem)] leading-[1.12]">{sm.conclusion}</p>
+          <p className="mt-4 max-w-[52ch] text-[1.05rem] leading-relaxed text-navy/70">{sm.conclusionNote}</p>
         </div>
       </section>
 

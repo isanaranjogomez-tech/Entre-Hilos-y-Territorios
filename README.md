@@ -35,7 +35,7 @@ Cada `push` a la rama `main` ejecuta `.github/workflows/deploy.yml`: instala dep
 
 Para recuperar una versión anterior, revierte el commit correspondiente en `main` (cada commit es un punto de restauración) y el sitio se vuelve a publicar solo.
 
-**Material retenido de la versión pública:** las imágenes de terceros del ensayo y el `.docx` original (que conserva comentarios de revisión) están en `.gitignore` y listados en `src/content/publication.ts`. Siguen en el proyecto local; en la web pública aparece un aviso. Para publicarlos, confirma el permiso y quítalos de ambos lugares.
+**Material retenido de la versión pública:** el `.docx` original del ensayo (conserva comentarios de revisión) está en `.gitignore` y listado en `src/content/publication.ts`. Las figuras del ensayo se publican (permiso confirmado por la responsable del proyecto). Siguen en el proyecto local; en la web pública aparece un aviso. Para publicarlos, confirma el permiso y quítalos de ambos lugares.
 
 Otros servidores: `vercel.json` (Vercel) y `public/_redirects` (Netlify) ya están incluidos; ahí la ruta base es `/`.
 

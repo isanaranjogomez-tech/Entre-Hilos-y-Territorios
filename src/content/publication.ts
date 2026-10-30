@@ -7,13 +7,7 @@
  * from this list and from .gitignore, then push.
  */
 export const withheld = new Set<string>([
-  // Third-party images reproduced in the essay (INVEMAR, IGAC, Parques Nacionales,
-  // Museo Bolivariano, Alba Zero): permission for public web use not confirmed.
-  'images/ensayo/figura-1-subregiones.jpg',
-  'images/ensayo/figura-2-apushii.jpg',
-  'images/ensayo/figura-3-pescadores.jpg',
-  'images/ensayo/figura-4-nina-wayuu.jpg',
-  'images/ensayo/pintura-mujer-tejiendo.jpg',
+  // The essay's figures are published: permission confirmed by the project lead (2026-10-30).
   // The original .docx still carries the coordinator's review comments.
   'documents/ensayo-guajira-entrega-final.docx',
 ]);

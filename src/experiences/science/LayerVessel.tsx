@@ -66,8 +66,8 @@ export function LayerVessel() {
   const fuelOpacity = drops ? 0.45 : 1;
   return (
     <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-center md:gap-16">
-      <div className="relative mx-auto w-full max-w-[460px]">
-        <svg viewBox="0 0 500 540" className="w-full" role="img" aria-label="Conceptual vessel: a fuel layer floats above a water layer.">
+      <div className="relative mx-auto w-full max-w-[600px]">
+        <svg viewBox="0 0 660 540" className="w-full" role="img" aria-label="Conceptual vessel: a fuel layer floats above a water layer.">
           <defs>
             <linearGradient id="v-water" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0" stopColor="#7cc6d3" />
@@ -111,13 +111,23 @@ export function LayerVessel() {
           </g>
           <path d={`M${X0} ${TOP} L${X0} ${BOTTOM - 20} Q${X0} ${BOTTOM} ${X0 + 20} ${BOTTOM} L${X1 - 20} ${BOTTOM} Q${X1} ${BOTTOM} ${X1} ${BOTTOM - 20} L${X1} ${TOP}`} fill="url(#v-glass)" stroke="#143848" strokeOpacity=".45" strokeWidth="2" />
           <ellipse cx="250" cy={TOP} rx="130" ry="12" fill="none" stroke="#143848" strokeOpacity=".45" strokeWidth="2" />
-          {/* labels, as on the poster's Figure 3 */}
-          <g fontFamily="IBM Plex Mono, monospace" fontSize="13" fill="#143848">
-            <line x1={X1 + 6} y1={(FUEL_TOP + INTERFACE) / 2} x2={X1 + 26} y2={(FUEL_TOP + INTERFACE) / 2} stroke="#143848" strokeOpacity=".5" />
-            <text x={X1 + 30} y={(FUEL_TOP + INTERFACE) / 2 + 4}>FUEL</text>
-            <line x1={X1 + 6} y1={(INTERFACE + BOTTOM) / 2} x2={X1 + 26} y2={(INTERFACE + BOTTOM) / 2} stroke="#143848" strokeOpacity=".5" />
-            <text x={X1 + 30} y={(INTERFACE + BOTTOM) / 2 + 4}>WATER</text>
+          {/* Annotations tied to the model (poster values) */}
+          <g fontFamily="IBM Plex Mono, monospace" fill="#143848">
+            <line x1={X1 + 6} y1={(FUEL_TOP + INTERFACE) / 2} x2={X1 + 30} y2={(FUEL_TOP + INTERFACE) / 2} stroke="#b07a1e" strokeWidth="1.5" />
+            <text x={X1 + 36} y={(FUEL_TOP + INTERFACE) / 2 - 4} fontSize="21" fontFamily="Instrument Serif, serif">Primarily non-polar fuel</text>
+            <text x={X1 + 36} y={(FUEL_TOP + INTERFACE) / 2 + 16} fontSize="11.5" opacity=".7">GASOLINE · 715–780 kg/m³</text>
+            <line x1={X1 + 6} y1={(INTERFACE + BOTTOM) / 2} x2={X1 + 30} y2={(INTERFACE + BOTTOM) / 2} stroke="#2f7f92" strokeWidth="1.5" />
+            <text x={X1 + 36} y={(INTERFACE + BOTTOM) / 2 - 4} fontSize="21" fontFamily="Instrument Serif, serif">Polar water</text>
+            <text x={X1 + 36} y={(INTERFACE + BOTTOM) / 2 + 16} fontSize="11.5" opacity=".7">≈ 1,000 kg/m³ AT 4 °C</text>
+            {/* density difference: the lighter layer sits above */}
+            <line x1={X0 - 34} y1={BOTTOM - 30} x2={X0 - 34} y2={FUEL_TOP + 8} stroke="#143848" strokeOpacity=".55" strokeWidth="1.5" markerEnd="url(#v-arrow)" />
+            <text transform={`translate(${X0 - 46} ${(FUEL_TOP + BOTTOM) / 2 + 60}) rotate(-90)`} fontSize="11" letterSpacing="1.5" opacity=".7">DENSITY DIFFERENCE · LESS DENSE ABOVE</text>
           </g>
+          <defs>
+            <marker id="v-arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0 0 L10 5 L0 10Z" fill="#143848" fillOpacity=".6" />
+            </marker>
+          </defs>
         </svg>
       </div>
 

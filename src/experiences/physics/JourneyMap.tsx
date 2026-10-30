@@ -20,7 +20,7 @@ interface Props {
   showVectors: boolean;
 }
 
-const FOLLOW_ZOOM = 2.3;
+const FOLLOW_ZOOM = 1.85;
 /** Constant on-screen size of the vehicle (px). */
 const CAR_PX = 46;
 
@@ -67,8 +67,10 @@ export function JourneyMap({ day, travel, camera, inset, showVectors }: Props) {
   const s = sOverview * Math.pow(sFollow / sOverview, f);
   const fx = (bbox.x0 + bbox.x1) / 2 + (car.x - (bbox.x0 + bbox.x1) / 2) * f;
   const fy = (bbox.y0 + bbox.y1) / 2 + (car.y - (bbox.y0 + bbox.y1) / 2) * f;
-  const tx = cx - s * fx;
-  const ty = cy - s * fy;
+  // Keep the map covering the frame when it is larger than it (no empty edges); the vehicle stays in view.
+  const fit = (t: number, imgPx: number, framePx: number) => (imgPx >= framePx ? Math.min(0, Math.max(framePx - imgPx, t)) : t);
+  const tx = fit(cx - s * fx, s * W, size.w);
+  const ty = fit(cy - s * fy, s * H, size.h);
   const k = 1 / s; // image px per screen px
   const v = showVectors ? camera.vectors : 0;
   const draw = (i: number, n: number) => Math.min(1, Math.max(0, v * n - i));
